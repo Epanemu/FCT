@@ -61,8 +61,8 @@ epsilons /= scales
 X /= scales
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
-X_test = X_test[:50_000] # hard limit on the ammount of data
-y_test = y_test[:50_000] # hard limit on the ammount of data
+X_train = X_train[:50_000] # hard limit on the ammount of data
+y_train = y_train[:50_000] # hard limit on the ammount of data
 
 print("Starting testing...")
 
