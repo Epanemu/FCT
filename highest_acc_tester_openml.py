@@ -55,7 +55,7 @@ for i, col_data in enumerate(X.T):
     epsilons[i] = eps.min()
 
 scales[scales == 0] = 1 # to not divide by zero, if all values were 0
-epsilons[epsilons == np.inf] = 0 # if all values were same, we actually want eps 0
+epsilons[epsilons == np.inf] = 1 # if all values were same, we actually want eps nonzero to prevent false splitting
 
 epsilons /= scales
 X /= scales
