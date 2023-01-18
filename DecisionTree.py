@@ -102,12 +102,15 @@ class DecisionTreeMIP:
         # ADDED:
         # Require defined accuracy in leaves
         # Either accuracy, or if not many points in leaf maximal number of misclasifications
-        # use_acc = m.addMVar((leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
-        # m.addConstr(use_acc <= points_in_leaf / self.leaf_acc_limit)
-        # m.addConstr(use_acc >= (points_in_leaf - self.leaf_acc_limit + 1) / n_data)
-        # m.addConstr(misclassified <= self.max_invalid + M * use_acc)
-        # m.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy) + M * (1 - use_acc))
-        m.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy))
+        # SOFT CONSTRAINT
+        use_acc = m.addMVar((leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
+        m.addConstr(use_acc <= points_in_leaf / self.leaf_acc_limit)
+        m.addConstr(use_acc >= (points_in_leaf - self.leaf_acc_limit + 1) / n_data)
+        m.addConstr(misclassified <= self.max_invalid + M * use_acc)
+        m.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy) + M * (1 - use_acc))
+
+        # HARD CONSTRAINT
+        # m.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy))
 
         # normalize by the number of misclassified points, if simply the most represented class would be estimated
         base_error = n_data - Y.sum(axis=1).max()
