@@ -7,7 +7,7 @@ import argparse
 
 from sklearn.model_selection import train_test_split
 
-from DecisionTree import DecisionTreeMIP
+from XCT import XCT_MIP
 
 parser = argparse.ArgumentParser()
 # data parameters
@@ -81,9 +81,9 @@ last_time = time.time()
 best_model = None
 while high - low > args.required_prec:
     m = (high+low) / 2
-    dt = DecisionTreeMIP(depth=args.depth, leaf_accuracy=m, only_feasibility=args.feasibility,
-                         hard_constraint=args.hard_constr)
-    res, model, a, b = dt.fit_model(X_train, y_train, n_classes, epsilons, time_limit=time_limit,
+    xct = XCT_MIP(depth=args.depth, leaf_accuracy=m, only_feasibility=args.feasibility,
+                 hard_constraint=args.hard_constr)
+    res, model, a, b = xct.fit_model(X_train, y_train, n_classes, epsilons, time_limit=time_limit,
         log_file=f"{args.results_dir}/{args.dataset_type}/{args.dataset_i}{dataset_name}_{m*100:.2f}.log")
     now_time = time.time()
 

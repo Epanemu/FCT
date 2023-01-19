@@ -1,7 +1,7 @@
 import gurobipy as gb
 import numpy as np
 
-class DecisionTreeMIP:
+class XCT_MIP:
     leaf_acc_limit = 20 # since how many points compute precision
     max_invalid = 5 # require at most this many misclasified
 
@@ -42,7 +42,7 @@ class DecisionTreeMIP:
         # print(right_ancestors) # [[], [1], [0], [2, 0]]
 
         # MAKE THE MILP MODEL
-        m = gb.Model("DT model")
+        m = gb.Model("XCT model")
 
         # branch nodes computation conditions
         a = m.addMVar((n_features, branch_nodes), vtype=gb.GRB.BINARY, name="a")
