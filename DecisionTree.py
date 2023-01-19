@@ -5,11 +5,12 @@ class DecisionTreeMIP:
     leaf_acc_limit = 20 # since how many points compute precision
     max_invalid = 5 # require at most this many misclasified
 
-    def __init__(self, depth, leaf_accuracy=0.9, min_in_leaf=1, only_feasibility=False):
+    def __init__(self, depth, leaf_accuracy=0.9, min_in_leaf=1, only_feasibility=False, hard_constraint=False):
         self.depth = depth
         self.leaf_accuracy = leaf_accuracy
         self.min_in_leaf = min_in_leaf
         self.only_feasibility = only_feasibility
+        self.hard_constraint = hard_constraint
         self.max_invalid = max(self.leaf_acc_limit * (1-leaf_accuracy), self.max_invalid)
 
     def fit_model(self, X, y, n_classes, epsilons, warmstart_values=None, time_limit=3600, verbose=False, log_file=""):
@@ -103,15 +104,17 @@ class DecisionTreeMIP:
         # ADDED:
         # Require defined accuracy in leaves
         # Either accuracy, or if not many points in leaf maximal number of misclasifications
-        # SOFT CONSTRAINT
-        use_acc = m.addMVar((leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
-        m.addConstr(use_acc <= points_in_leaf / self.leaf_acc_limit)
-        m.addConstr(use_acc >= (points_in_leaf - self.leaf_acc_limit + 1) / n_data)
-        m.addConstr(misclassified <= self.max_invalid + M * use_acc)
-        m.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy) + M * (1 - use_acc))
+        if self.hard_constraint:
+            # HARD CONSTRAINT
+            m.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy))
+        else:
+            # SOFT CONSTRAINT
+            use_acc = m.addMVar((leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
+            m.addConstr(use_acc <= points_in_leaf / self.leaf_acc_limit)
+            m.addConstr(use_acc >= (points_in_leaf - self.leaf_acc_limit + 1) / n_data)
+            m.addConstr(misclassified <= self.max_invalid + M * use_acc)
+            m.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy) + M * (1 - use_acc))
 
-        # HARD CONSTRAINT
-        # m.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy))
 
         # normalize by the number of misclassified points, if simply the most represented class would be estimated
         base_error = n_data - Y.sum(axis=1).max()
