@@ -134,8 +134,8 @@ class DecisionTreeMIP:
 
         m.optimize()
 
-        # TODO improve this so it returns more than if feasible solution was found
-        return m.SolCount > 0, m
+        # TODO improve this so it does not need to return it, model stays in between runs
+        return m.SolCount > 0, m, a, b
         # if m.status == gb.GRB.TIME_LIMIT:
         #     obj = m.getObjective()
         #     return obj.getValue()

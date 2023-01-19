@@ -78,13 +78,16 @@ last_time = time.time()
 best_model = None
 while high - low > 0.001:
     m = (high+low) / 2
-    dt = DecisionTreeMIP(depth=5, leaf_accuracy=m, only_feasibility=(sys.argv[3] == "feas"))
-    res, model = dt.fit_model(X_train, y_train, n_classes, epsilons, time_limit=time_limit,
-        log_file=f"openml_solutions_hard_feas/{sys.argv[1]}/{sys.argv[2]}{dataset_name}_{m*100:.2f}.log")
+    # TODO introduce argparse
+    dt = DecisionTreeMIP(depth=5, leaf_accuracy=m, only_feasibility=(sys.argv[4] == "feas"))
+    res, model, a, b = dt.fit_model(X_train, y_train, n_classes, epsilons, time_limit=time_limit,
+        log_file=f"{sys.argv[3]}/{sys.argv[1]}/{sys.argv[2]}{dataset_name}_{m*100:.2f}.log")
     now_time = time.time()
 
     if res:
         best_model = model
+        with open(f"{sys.argv[3]}/{sys.argv[1]}/{sys.argv[2]}{dataset_name}_{low*100:.2f}.ctx", "wb") as f:
+            pickle.dump((scales, shifts, a.X, b.X), f)
 
     print(f"Attempted {m*100} accuracy - {res} in {(now_time - last_time):.2f} sec")
     last_time = now_time
@@ -94,8 +97,8 @@ while high - low > 0.001:
         high = m
 
 if best_model is not None:
-    best_model.write(f"openml_solutions_hard_feas/{sys.argv[1]}/{sys.argv[2]}{dataset_name}_{low*100:.2f}.mps")
-    best_model.write(f"openml_solutions_hard_feas/{sys.argv[1]}/{sys.argv[2]}{dataset_name}_{low*100:.2f}.sol")
+    best_model.write(f"{sys.argv[3]}/{sys.argv[1]}/{sys.argv[2]}{dataset_name}_{low*100:.2f}.mps")
+    best_model.write(f"{sys.argv[3]}/{sys.argv[1]}/{sys.argv[2]}{dataset_name}_{low*100:.2f}.sol")
 
 print(f"Accuracy was found between {low*100:.2f}% and {high*100:.2f}%")
 print(f"given time limit {time_limit} seconds")
