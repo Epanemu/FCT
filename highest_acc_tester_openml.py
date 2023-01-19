@@ -78,7 +78,7 @@ last_time = time.time()
 best_model = None
 while high - low > 0.001:
     m = (high+low) / 2
-    dt = DecisionTreeMIP(depth=5, leaf_accuracy=m)
+    dt = DecisionTreeMIP(depth=5, leaf_accuracy=m, only_feasibility=(sys.argv[3] == "feas"))
     res, model = dt.fit_model(X_train, y_train, n_classes, epsilons, time_limit=time_limit,
         log_file=f"openml_solutions_hard_feas/{sys.argv[1]}/{sys.argv[2]}{dataset_name}_{m*100:.2f}.log")
     now_time = time.time()
