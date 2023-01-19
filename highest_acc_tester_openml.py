@@ -1,39 +1,42 @@
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
 import time
 import os
-import sys
 import pickle
-# import openml
-# openml.config.cache_directory = os.path.expanduser(os.getcwd() + "/openml_cache")
+import argparse
+
+from sklearn.model_selection import train_test_split
 
 from DecisionTree import DecisionTreeMIP
 
+parser = argparse.ArgumentParser()
+# data parameters
+parser.add_argument("-i", "--dataset_i", required=True, type=int, help="Index of the dataset")
+parser.add_argument("-type", "--dataset_type", required=True, help="Either categorical or numerical")
 
-# suites_id = {"numerical_regression": 297,
-#           "numerical_classification": 298,
-#           "categorical_regression": 299,
-#           "categorical_classification": 304}
+# output parameters
+parser.add_argument("-res", "--results_dir", required=True, help="Where to store the results")
 
-# benchmark_suite = openml.study.get_suite(suites_id[sys.argv[1]])  # obtain the benchmark suite
-# # for k, task_id in enumerate(benchmark_suite.tasks):  # iterate over all tasks
+# model parameters
+parser.add_argument("-feas", "--feasibility", action="store_true", help="Aim for feasibility only")
+parser.add_argument("-hard", "--hard_constr", action="store_true", help="Go with hard constraint in leaves")
+parser.add_argument("-d", "--depth", type=int, default=5, help="Depth of the tree")
+parser.add_argument("-max", "--max_data", type=int, default=50_000, help="Limit on data inputed into the model")
+# optimization parameters
+parser.add_argument("-t", "--time_limit", type=int, default=3600, help="Time limit for optimization")
 
-# k = int(sys.argv[2])
-# task_id = benchmark_suite.tasks[k]
+# halving method paramters
+parser.add_argument("-u", "--upper", type=float, default=1, help="Initial upper bound of the interval halving")
+parser.add_argument("-l", "--lower", type=float, default=0.5, help="Initial lower bound of the interval halving")
+parser.add_argument("-prec", "--required_prec", type=float, default=0.001, help="Maximal distance between limits upon convergence")
 
-# task = openml.tasks.get_task(task_id)  # download the OpenML task
-# dataset = task.get_dataset()
-# print(f"Handling dataset {dataset.name} ({k+1}/{len(benchmark_suite.tasks)})")
-# X, y, categorical_indicator, attribute_names = dataset.get_data(
-#     dataset_format="dataframe", target=dataset.default_target_attribute
-# )
+args = parser.parse_args()
 
-directory = f"data/openml/{sys.argv[1]}/"
-with open(directory+os.listdir(directory)[int(sys.argv[2])], "rb") as f:
+directory = f"data/openml/{args.dataset_type}/"
+with open(directory+os.listdir(directory)[args.dataset_i], "rb") as f:
     X, y, categorical_indicator, attribute_names, dataset_name = pickle.load(f)
 
-print(f"Handling dataset {dataset_name} - {sys.argv[2]} in {sys.argv[1]}")
+print(f"Handling dataset {dataset_name} - {args.dataset_i} in {args.dataset_type}")
 
 X = np.array(X, dtype=float) # the decision variable must not be a part of data
 y, class_mapping = pd.factorize(y)
@@ -66,27 +69,27 @@ assert np.all(epsilons > 0)
 assert np.all((X >= 0) & (X <= 1))
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
-X_train = X_train[:50_000] # hard limit on the ammount of data
-y_train = y_train[:50_000] # hard limit on the ammount of data
+X_train = X_train[:args.max_data] # hard limit on the ammount of data
+y_train = y_train[:args.max_data] # hard limit on the ammount of data
 
 print("Starting testing...")
 
-time_limit = 3600
-high = 1
-low = 0.5
+time_limit = args.time_limit
+high = args.upper
+low = args.lower
 last_time = time.time()
 best_model = None
-while high - low > 0.001:
+while high - low > args.required_prec:
     m = (high+low) / 2
-    # TODO introduce argparse
-    dt = DecisionTreeMIP(depth=5, leaf_accuracy=m, only_feasibility=(sys.argv[4] == "feas"))
+    dt = DecisionTreeMIP(depth=args.depth, leaf_accuracy=m, only_feasibility=args.feasibility,
+                         hard_constraint=args.hard_constr)
     res, model, a, b = dt.fit_model(X_train, y_train, n_classes, epsilons, time_limit=time_limit,
-        log_file=f"{sys.argv[3]}/{sys.argv[1]}/{sys.argv[2]}{dataset_name}_{m*100:.2f}.log")
+        log_file=f"{args.results_dir}/{args.dataset_type}/{args.dataset_i}{dataset_name}_{m*100:.2f}.log")
     now_time = time.time()
 
     if res:
         best_model = model
-        with open(f"{sys.argv[3]}/{sys.argv[1]}/{sys.argv[2]}{dataset_name}_{low*100:.2f}.ctx", "wb") as f:
+        with open(f"{args.results_dir}/{args.dataset_type}/{args.dataset_i}{dataset_name}_{low*100:.2f}.ctx", "wb") as f:
             pickle.dump((scales, shifts, a.X, b.X), f)
 
     print(f"Attempted {m*100} accuracy - {res} in {(now_time - last_time):.2f} sec")
@@ -97,8 +100,8 @@ while high - low > 0.001:
         high = m
 
 if best_model is not None:
-    best_model.write(f"{sys.argv[3]}/{sys.argv[1]}/{sys.argv[2]}{dataset_name}_{low*100:.2f}.mps")
-    best_model.write(f"{sys.argv[3]}/{sys.argv[1]}/{sys.argv[2]}{dataset_name}_{low*100:.2f}.sol")
+    best_model.write(f"{args.results_dir}/{args.dataset_type}/{args.dataset_i}{dataset_name}_{low*100:.2f}.mps")
+    best_model.write(f"{args.results_dir}/{args.dataset_type}/{args.dataset_i}{dataset_name}_{low*100:.2f}.sol")
 
 print(f"Accuracy was found between {low*100:.2f}% and {high*100:.2f}%")
 print(f"given time limit {time_limit} seconds")
