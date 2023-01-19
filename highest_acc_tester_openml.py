@@ -42,10 +42,16 @@ y = np.array(y)
 n_data, n_features = X.shape
 n_classes = len(class_mapping)
 
+shifts = np.empty((n_features,))
 scales = np.empty((n_features,))
 epsilons = np.empty((n_features,))
 for i, col_data in enumerate(X.T):
-    scales[i] = col_data.max() # assumes non-negative numbers -TODO improve that?
+    shifts[i] = col_data.min()
+    col_data -= shifts[i]
+    scales[i] = col_data.max()
+    if scales[i] == 0:
+        scales[i] = 1 # to not divide by zero, if all values were the same
+    col_data /= scales[i]
     # would more effective to not need to compute this for those arbitrarily set
     # the time spent on this is negligible in comparison to the MIP optimization though...
     col_sorted = col_data.copy()
@@ -54,11 +60,10 @@ for i, col_data in enumerate(X.T):
     eps[eps == 0] = np.inf
     epsilons[i] = eps.min()
 
-scales[scales == 0] = 1 # to not divide by zero, if all values were 0
 epsilons[epsilons == np.inf] = 1 # if all values were same, we actually want eps nonzero to prevent false splitting
 
-epsilons /= scales
-X /= scales
+assert np.all(epsilons > 0)
+assert np.all((X >= 0) & (X <= 1))
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
 X_train = X_train[:50_000] # hard limit on the ammount of data
