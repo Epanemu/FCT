@@ -200,6 +200,20 @@ class XCT_MIP:
 
         return self.model.SolCount > 0 # return whether a solution was found
 
+    def get_humanlike_status(self):
+        if self.model.Status == gb.GRB.OPTIMAL:
+            return "OPT"
+        elif self.model.Status == gb.GRB.INFEASIBLE:
+            return "INF"
+        elif self.model.Status == gb.GRB.TIME_LIMIT:
+            return "TIME"
+        elif self.model.Status == gb.GRB.MEM_LIMIT:
+            return "MEM"
+        elif self.model.Status == gb.GRB.INTERRUPTED:
+            return "INT"
+        else:
+            return f"ST{self.model.status}"
+
     def get_base_context(self):
         return self.vars["a"].X, self.vars["b"].X, self.shifts, self.scales, self.epsilons, self.depth
 
