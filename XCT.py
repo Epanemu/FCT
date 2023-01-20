@@ -9,7 +9,7 @@ class XCT_MIP:
         self.only_feasibility = only_feasibility
         self.hard_constraint = hard_constraint
         self.leaf_acc_limit = leaf_acc_limit
-        self.max_invalid = leaf_acc_limit * (1-leaf_accuracy) if max_invalid is not None else max_invalid
+        self.max_invalid = leaf_acc_limit * (1-leaf_accuracy) if max_invalid is None else max_invalid
         self.model = None
 
     def make_model(self, X, y, n_classes):
@@ -78,13 +78,13 @@ class XCT_MIP:
         self.model.addConstr(point_assigned.sum(axis=1) == 1) # (8)
 
         M_right = 1
-        M_left = 1 + epsilons.max()
+        M_left = 1 + self.epsilons.max()
         # conditions for assignment to node
         for leaf_i in range(self.__n_leaf_nodes):
             if right_ancestors[leaf_i]: # causes issues if there are no ancestors
                 self.model.addConstr(X @ a[:, right_ancestors[leaf_i]] >= b[np.newaxis, right_ancestors[leaf_i]] - M_right*(1-point_assigned[:,[leaf_i]])) # (10)
             if left_ancestors[leaf_i]:
-                self.model.addConstr((X + epsilons) @ a[:, left_ancestors[leaf_i]] <= b[np.newaxis, left_ancestors[leaf_i]] + M_left*(1-point_assigned[:,[leaf_i]])) # (12)
+                self.model.addConstr((X + self.epsilons) @ a[:, left_ancestors[leaf_i]] <= b[np.newaxis, left_ancestors[leaf_i]] + M_left*(1-point_assigned[:,[leaf_i]])) # (12)
 
         # classification
         # Y reworked to 0 or 1
@@ -115,8 +115,8 @@ class XCT_MIP:
             "b": b,
             "point_assigned": point_assigned,
             "any_assigned": any_assigned,
-            "point_in_leaf": point_in_leaf,
-            "class_point_in_leaf": class_point_in_leaf,
+            "points_in_leaf": points_in_leaf,
+            "class_points_in_leaf": class_points_in_leaf,
             "class_in_leaf": class_in_leaf,
             "misclassified": misclassified
         }
@@ -195,8 +195,8 @@ class XCT_MIP:
             "b": b,
             "point_assigned": point_assigned,
             "any_assigned": any_assigned,
-            "point_in_leaf": point_in_leaf,
-            "class_point_in_leaf": class_point_in_leaf,
+            "points_in_leaf": points_in_leaf,
+            "class_points_in_leaf": class_points_in_leaf,
             "class_in_leaf": class_in_leaf,
             "misclassified": misclassified,
             "use_acc": use_acc,
