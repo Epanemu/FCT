@@ -60,7 +60,8 @@ while high - low > args.required_prec:
     m = (high+low) / 2
     xct = XCT_MIP(depth=args.depth, leaf_accuracy=m, only_feasibility=args.feasibility,
                  hard_constraint=args.hard_constr)
-    xct.make_model(X_train, y_train, n_classes)
+    xct.prep_model(X_train, n_classes)
+    xct.make_model(X_train, y_train)
     res = xct.optimize(time_limit=time_limit, log_file=f"{logfile_base}_{m*100:.2f}.log")
     now_time = time.time()
 

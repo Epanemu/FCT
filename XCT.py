@@ -12,7 +12,7 @@ class XCT_MIP:
         self.max_invalid = leaf_acc_limit * (1-leaf_accuracy) if max_invalid is None else max_invalid
         self.model = None
 
-    def make_model(self, X, y, n_classes):
+    def prep_model(self, X, n_classes):
         self.__n_classes = n_classes
         self.__n_data, self.__n_features = X.shape
 
@@ -35,6 +35,7 @@ class XCT_MIP:
         self.__n_leaf_nodes = 2**self.depth
         self.__n_branch_nodes = 2**self.depth - 1
 
+    def make_model(self, X, y):
         left_ancestors = [] # those where decision went left
         right_ancestors = [] # those where decision went right
         for leaf_i in range(self.__n_leaf_nodes):
