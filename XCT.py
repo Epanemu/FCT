@@ -119,7 +119,7 @@ class XCT_MIP:
             # how much accuracy can a datapoint in a leaf give
             accuracy_ammount = self.model.addMVar((self.__n_data, self.__n_leaf_nodes), lb=0, ub=1, name="accuracy_ammount")
             self.vars["accuracy_ammount"] = accuracy_ammount
-            self.model.addConstr(accuracy_ammount.sum(axis=0) == 1)  # ideal is 100% acuracy (1)
+            self.model.addConstr(accuracy_ammount.sum(axis=0) == any_assigned)  # ideal is 100% acuracy (1)
             self.model.addConstr(accuracy_ammount <= point_assigned) # must be assigned to this leaf, to give any potential accuracy
             for i in range(self.__n_data):
                 for j in range(i+1, self.__n_data):
@@ -136,7 +136,7 @@ class XCT_MIP:
 
             leaf_acc = self.model.addVar(lb=0, ub=1, name="leaf_accuracy")
             self.vars["leaf_acc"] = leaf_acc
-            self.model.addConstr(leaf_acc <= assigned_accuracy.sum(axis=0)) # lowest bound on leaf accuracy
+            self.model.addConstr(leaf_acc <= assigned_accuracy.sum(axis=0) + (1 - any_assigned)) # lowest bound on leaf accuracy
 
             self.model.setObjective(leaf_acc, sense=gb.GRB.MAXIMIZE)
         else:
