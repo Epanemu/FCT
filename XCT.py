@@ -174,7 +174,7 @@ class XCT_MIP:
         return self.model.SolCount > 0 # return whether a solution was found
 
     def get_base_context(self):
-        return self.vars["a"].X, self.vars["b"].X, self.shifts, self.scales, self.depth
+        return self.vars["a"].X, self.vars["b"].X, self.shifts, self.scales, self.epsilons, self.depth
 
     def load_sol(self, sol_file):
         tmp_model = gb.Model()
