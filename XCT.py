@@ -36,7 +36,12 @@ class XCT_MIP:
         self.__n_leaf_nodes = 2**self.depth
         self.__n_branch_nodes = 2**self.depth - 1
 
-    def make_model(self, X, y):
+    def make_model(self, X, y, mem_limit=None):
+        if mem_limit is not None:
+            env = gb.Env(empty=True)
+            env.setParam('MemLimit', mem_limit)
+            env.start()
+
         left_ancestors = [] # those where decision went left
         right_ancestors = [] # those where decision went right
         for leaf_i in range(self.__n_leaf_nodes):

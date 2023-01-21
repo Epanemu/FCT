@@ -24,6 +24,7 @@ parser.add_argument("-d", "--depth", type=int, default=5, help="Depth of the tre
 parser.add_argument("-max", "--max_data", type=int, default=50_000, help="Limit on data inputed into the model")
 # optimization parameters
 parser.add_argument("-t", "--time_limit", type=int, default=3600, help="Time limit for optimization [s]")
+parser.add_argument("-m", "--memory_limit", type=int, default=None, help="Memory limit for gurobi [GB]")
 
 # halving method paramters
 parser.add_argument("--halving", action="store_true", help="Use the interval halving method")
@@ -90,7 +91,7 @@ else:
     print("Creating the model...")
     xct = XCT_MIP(depth=args.depth, maximize_leaf_accuracy=True)
     xct.prep_model(X_train, n_classes)
-    xct.make_model(X_train, y_train)
+    xct.make_model(X_train, y_train, mem_limit=args.memory_limit)
     print("Optimizing the model...")
     res = xct.optimize(time_limit=time_limit, log_file=f"{logfile_base}_direct.log")
 
