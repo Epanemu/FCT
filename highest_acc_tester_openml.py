@@ -70,7 +70,7 @@ if args.halving:
 
         if res:
             best_model = xct.model
-            with open(f"{logfile_base}_{low*100:.2f}.ctx", "wb") as f:
+            with open(f"{logfile_base}_{m*100:.2f}.ctx", "wb") as f:
                 pickle.dump(xct.get_base_context(), f)
 
         print(f"Attempted {m*100} accuracy - {res} in {(now_time - last_time):.2f} sec")
