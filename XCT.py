@@ -36,12 +36,7 @@ class XCT_MIP:
         self.__n_leaf_nodes = 2**self.depth
         self.__n_branch_nodes = 2**self.depth - 1
 
-    def make_model(self, X, y, mem_limit=None):
-        if mem_limit is not None:
-            env = gb.Env(empty=True)
-            env.setParam('MemLimit', mem_limit)
-            env.start()
-
+    def make_model(self, X, y):
         left_ancestors = [] # those where decision went left
         right_ancestors = [] # those where decision went right
         for leaf_i in range(self.__n_leaf_nodes):
@@ -178,7 +173,7 @@ class XCT_MIP:
 
         self.model.update()
 
-    def optimize(self, warmstart_values=None, time_limit=3600, verbose=False, log_file=""):
+    def optimize(self, warmstart_values=None, time_limit=3600, mem_limit=None, verbose=False, log_file=""):
         assert self.model is not None
 
         # warm start
@@ -200,6 +195,10 @@ class XCT_MIP:
             else:
                 self.model.params.OutputFlag = 0
         self.model.params.TimeLimit = time_limit
+        if mem_limit is not None:
+            self.model.params.SoftMemLimit = mem_limit
+        self.model.params.NodefileStart = 0.5
+        self.model.params.NodefileDir = "nodefiles"
 
         self.model.optimize()
 

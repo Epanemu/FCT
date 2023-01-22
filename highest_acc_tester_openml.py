@@ -65,7 +65,7 @@ if args.halving:
                     hard_constraint=args.hard_constr)
         xct.prep_model(X_train, n_classes)
         xct.make_model(X_train, y_train)
-        res = xct.optimize(time_limit=time_limit, log_file=f"{logfile_base}_{m*100:.2f}.log")
+        res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, log_file=f"{logfile_base}_{m*100:.2f}.log")
         now_time = time.time()
 
         if res:
@@ -91,9 +91,9 @@ else:
     print("Creating the model...")
     xct = XCT_MIP(depth=args.depth, maximize_leaf_accuracy=True)
     xct.prep_model(X_train, n_classes)
-    xct.make_model(X_train, y_train, mem_limit=args.memory_limit)
+    xct.make_model(X_train, y_train)
     print("Optimizing the model...")
-    res = xct.optimize(time_limit=time_limit, log_file=f"{logfile_base}_direct.log")
+    res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, log_file=f"{logfile_base}_direct.log")
 
     status = xct.get_humanlike_status()
 
