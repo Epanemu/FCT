@@ -221,7 +221,7 @@ class XCT_MIP:
             return f"ST{self.model.status}"
 
     def get_base_context(self):
-        return self.vars["a"].X, self.vars["b"].X, self.shifts, self.scales, self.epsilons, self.depth
+        return self.vars["a"].X, self.vars["b"].X, self.vars["class_in_leaf"].X, self.shifts, self.scales, self.epsilons, self.depth
 
     def load_sol(self, sol_file):
         tmp_model = gb.Model()
