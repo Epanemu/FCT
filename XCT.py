@@ -173,7 +173,7 @@ class XCT_MIP:
 
         self.model.update()
 
-    def optimize(self, warmstart_values=None, time_limit=3600, mem_limit=None, verbose=False, log_file=""):
+    def optimize(self, warmstart_values=None, time_limit=3600, mem_limit=None, n_threads=None, verbose=False, log_file=""):
         assert self.model is not None
 
         # warm start
@@ -199,6 +199,8 @@ class XCT_MIP:
             self.model.params.SoftMemLimit = mem_limit
         self.model.params.NodefileStart = 0.5
         self.model.params.NodefileDir = "nodefiles"
+        if n_threads is not None:
+            self.model.params.Threads = n_threads
 
         self.model.optimize()
 

@@ -25,6 +25,7 @@ parser.add_argument("-max", "--max_data", type=int, default=50_000, help="Limit 
 # optimization parameters
 parser.add_argument("-t", "--time_limit", type=int, default=3600, help="Time limit for optimization [s]")
 parser.add_argument("-m", "--memory_limit", type=int, default=None, help="Memory limit for gurobi [GB]")
+parser.add_argument("-thr", "--n_threads", type=int, default=None, help="Number of threads for gurobi to use")
 
 # halving method paramters
 parser.add_argument("--halving", action="store_true", help="Use the interval halving method")
@@ -93,7 +94,7 @@ else:
     xct.prep_model(X_train, n_classes)
     xct.make_model(X_train, y_train)
     print("Optimizing the model...")
-    res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, log_file=f"{logfile_base}_direct.log")
+    res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, log_file=f"{logfile_base}_direct.log")
 
     status = xct.get_humanlike_status()
 
