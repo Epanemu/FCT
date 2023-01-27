@@ -2,15 +2,16 @@ import gurobipy as gb
 import numpy as np
 
 class XCT_MIP:
-    def __init__(self, depth, leaf_accuracy=0.9, min_in_leaf=1, leaf_acc_limit=20, max_invalid=None, only_feasibility=False, hard_constraint=False, maximize_leaf_accuracy=False):
+    def __init__(self, depth, min_in_leaf=1, leaf_accuracy=None, leaf_acc_limit=20, max_invalid=None, only_feasibility=False, hard_constraint=False):
         self.depth = depth
-        self.leaf_accuracy = leaf_accuracy
         self.min_in_leaf = min_in_leaf
+        self.leaf_accuracy = leaf_accuracy
+        self.maximize_leaf_accuracy = leaf_accuracy is None
         self.leaf_acc_limit = leaf_acc_limit
-        self.max_invalid = leaf_acc_limit * (1-leaf_accuracy) if max_invalid is None else max_invalid
+        if not self.maximize_leaf_accuracy:
+            self.max_invalid = leaf_acc_limit * (1-leaf_accuracy) if max_invalid is None else max_invalid
         self.only_feasibility = only_feasibility
         self.hard_constraint = hard_constraint
-        self.maximize_leaf_accuracy = maximize_leaf_accuracy
         self.model = None
 
     def prep_model(self, X, n_classes):

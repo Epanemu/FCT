@@ -90,7 +90,7 @@ if args.halving:
     print()
 else:
     print("Creating the model...")
-    xct = XCT_MIP(depth=args.depth, maximize_leaf_accuracy=True)
+    xct = XCT_MIP(depth=args.depth)
     xct.prep_model(X_train, n_classes)
     xct.make_model(X_train, y_train)
     print("Optimizing the model...")
