@@ -116,11 +116,28 @@ class XCT_MIP:
             "class_in_leaf": class_in_leaf,
         }
 
+        if not self.hard_constraint:
+            # must add variable signifying what constraint is used
+            use_acc = self.model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
+            self.vars["use_acc"] = use_acc
+            self.model.addConstr(use_acc <= points_in_leaf / self.leaf_acc_limit)
+            self.model.addConstr(use_acc >= (points_in_leaf - self.leaf_acc_limit + 1) / self.__n_data)
+        M = self.__n_data
+
         if self.maximize_leaf_accuracy:
             # how much accuracy can a datapoint in a leaf give
             accuracy_ammount = self.model.addMVar((self.__n_data, self.__n_leaf_nodes), lb=0, ub=1, name="accuracy_ammount")
             self.vars["accuracy_ammount"] = accuracy_ammount
-            self.model.addConstr(accuracy_ammount.sum(axis=0) == any_assigned)  # ideal is 100% acuracy (1)
+            if self.hard_constraint:
+                self.model.addConstr(accuracy_ammount.sum(axis=0) == any_assigned)  # ideal is 100% acuracy
+            else:
+                # the soft accuracy works as follows: if it does not use the hard accuracy, it sets the total accuracy to
+                # a higher ammount
+                self.model.addConstr(accuracy_ammount.sum(axis=0) <= any_assigned + (1 - use_acc) * self.leaf_acc_limit)
+                self.model.addConstr(accuracy_ammount.sum(axis=0) >= any_assigned + (use_acc - 1))
+                self.model.addConstr(accuracy_ammount.sum(axis=0) <= self.leaf_acc_limit / points_in_leaf + M*use_acc)
+                self.model.addConstr(accuracy_ammount.sum(axis=0) >= self.leaf_acc_limit / points_in_leaf - M*use_acc) # might require ub > 1
+
             self.model.addConstr(accuracy_ammount <= point_assigned) # must be assigned to this leaf, to give any potential accuracy
             for i in range(self.__n_data):
                 for j in range(i+1, self.__n_data):
@@ -142,7 +159,6 @@ class XCT_MIP:
             self.model.setObjective(leaf_acc, sense=gb.GRB.MAXIMIZE)
         else:
             # original accuracy measure
-            M = self.__n_data
             misclassified = self.model.addMVar((self.__n_leaf_nodes,), lb=0, name="n_misclassfiied") # variable L (misclassification loss)
             self.vars["misclassified"] = misclassified
             # essentially looks for minimum of the number of misclassified samples
@@ -157,10 +173,6 @@ class XCT_MIP:
                 self.model.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy))
             else:
                 # SOFT CONSTRAINT
-                use_acc = self.model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
-                self.vars["use_acc"] = use_acc
-                self.model.addConstr(use_acc <= points_in_leaf / self.leaf_acc_limit)
-                self.model.addConstr(use_acc >= (points_in_leaf - self.leaf_acc_limit + 1) / self.__n_data)
                 self.model.addConstr(misclassified <= self.max_invalid + M * use_acc)
                 self.model.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy) + M * (1 - use_acc))
 
