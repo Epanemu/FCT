@@ -98,7 +98,7 @@ class XCT_MIP:
         class_points_in_leaf = self.model.addMVar((self.__n_classes, self.__n_leaf_nodes), name="N_class_points_in_leaf") # variable N_kt
         self.model.addConstr(class_points_in_leaf == Y @ point_assigned) # (15)
 
-        # TODO could be ommitted, likely
+        # extra variable could be ommitted. It is here to provide simpler information and less occlusion in other constraints
         points_in_leaf = self.model.addMVar((self.__n_leaf_nodes,), name="N_points_in_leaf") # variable N_t
         self.model.addConstr(points_in_leaf == point_assigned.sum(axis=0)) # (16)
 

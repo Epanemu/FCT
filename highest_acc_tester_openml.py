@@ -104,9 +104,9 @@ else:
         with open(f"{logfile_base}_{status}_{acc*100:.2f}.ctx", "wb") as f:
             pickle.dump(xct.get_base_context(), f)
 
-        xct.model.write(f"{logfile_base}_{status}_{acc*100:.2f}.mps")
+        # xct.model.write(f"{logfile_base}_{status}_{acc*100:.2f}.mps")
         xct.model.write(f"{logfile_base}_{status}_{acc*100:.2f}.sol")
-        print(f"Found a solution with {acc} leaf accuracy - {status}")
+        print(f"Found a solution with {acc*100} leaf accuracy - {status}")
     else:
         print(f"Did not find any solution - {status}")
         if status == "INF":
