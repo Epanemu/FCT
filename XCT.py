@@ -12,6 +12,9 @@ class XCT_MIP:
             self.max_invalid = leaf_acc_limit * (1-leaf_accuracy) if max_invalid is None else max_invalid
         self.only_feasibility = only_feasibility
         self.hard_constraint = hard_constraint
+
+        self.__n_leaf_nodes = 2**self.depth
+        self.__n_branch_nodes = 2**self.depth - 1
         self.model = None
 
     def prep_model(self, X, n_classes):
@@ -33,9 +36,6 @@ class XCT_MIP:
             self.epsilons[i] = eps.min()
 
         self.epsilons[self.epsilons == np.inf] = 1 # if all values were same, we actually want eps nonzero to prevent false splitting
-
-        self.__n_leaf_nodes = 2**self.depth
-        self.__n_branch_nodes = 2**self.depth - 1
 
     def make_model(self, X, y):
         left_ancestors = [] # those where decision went left
