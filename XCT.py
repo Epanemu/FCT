@@ -133,6 +133,7 @@ class XCT_MIP:
             else:
                 # the soft accuracy works as follows: if it does not use the hard accuracy, it sets the total accuracy to
                 # a higher ammount
+                # this is incorrect TODO MAKE A PROPER VALID PROPOSAL
                 self.model.addConstr(accuracy_ammount.sum(axis=0) <= any_assigned + (1 - use_acc) * self.leaf_acc_limit)
                 self.model.addConstr(accuracy_ammount.sum(axis=0) >= any_assigned + (use_acc - 1))
                 self.model.addConstr(accuracy_ammount.sum(axis=0) <= self.leaf_acc_limit / points_in_leaf + M*use_acc)
