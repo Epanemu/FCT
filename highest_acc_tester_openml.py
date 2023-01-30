@@ -7,7 +7,7 @@ import argparse
 
 from sklearn.model_selection import train_test_split
 
-from XCT import XCT_MIP
+from xct_nn.XCT_MIP import XCT_MIP
 
 parser = argparse.ArgumentParser()
 # data parameters
