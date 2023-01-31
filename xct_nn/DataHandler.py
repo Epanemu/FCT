@@ -46,6 +46,12 @@ class DataHandler:
         # if all values were same (min was infinity), we want eps nonzero to prevent non-deterministic splitting
         self.__epsilons[self.__epsilons == np.inf] = 1
 
+    def normalize(self, X):
+        return (X - self.__shifts) / self.__scales
+
+    def unnormalize(self, X):
+        return X * self.__scales + self.__shifts
+
     @property
     def n_data(self):
         return self.__n_data
@@ -70,8 +76,34 @@ class DataHandler:
     def epsilons(self):
         return self.__epsilons
 
-    def normalize(self, X):
-        return (X - self.__shifts) / self.__scales
+    @property
+    def class_mapping(self):
+        return self.__class_mapping
 
-    def unnormalize(self, X):
-        return X * self.__scales + self.__shifts
+    @property
+    def feature_names(self):
+        return self.__feature_names
+
+    @property
+    def dataset_name(self):
+        return self.__dataset_name
+
+    @property
+    def categorical_indicator(self):
+        return self.__categorical_indicator
+
+    @property
+    def used_data(self):
+        return self.__X_used, self.__y_used
+
+    @property
+    def train_data(self):
+        return self.__X_train, self.__y_train
+
+    @property
+    def test_data(self):
+        return self.__X_test, self.__y_test
+
+    @property
+    def all_data(self):
+        return self.__X, self.__y
