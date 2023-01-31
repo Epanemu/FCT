@@ -55,7 +55,7 @@ if args.halving:
         xct = XCT_MIP(args.depth, data_handler, leaf_accuracy=m, only_feasibility=args.feasibility,
                     hard_constraint=args.hard_constr)
         xct.make_model(X_train, y_train)
-        res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, log_file=f"{logfile_base}_{m*100:.2f}.log")
+        res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, log_file=f"{logfile_base}_{m*100:.2f}.log")
         now_time = time.time()
 
         if res:

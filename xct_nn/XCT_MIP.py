@@ -240,6 +240,10 @@ class XCT_MIP:
             "class_in_leaf": class_in_leaf,
         }
 
+        if not self.hard_constraint:
+            use_acc = tmp_model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
+            self.vars["use_acc"] = use_acc
+
         if self.maximize_leaf_accuracy:
             accuracy_ammount = self.model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), lb=0, ub=1, name="accuracy_ammount")
             assigned_accuracy = self.model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), lb=0, ub=1, name="assigned_accuracy")
@@ -250,9 +254,6 @@ class XCT_MIP:
         else:
             misclassified = tmp_model.addMVar((self.__n_leaf_nodes,), lb=0, name="n_misclassfiied") # variable L (misclassification loss)
             self.vars["misclassified"] = misclassified
-            if not self.hard_constraint:
-                use_acc = tmp_model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
-                self.vars["use_acc"] = use_acc
 
         tmp_model.update()
         tmp_model.read(sol_file)
