@@ -17,25 +17,15 @@ class XCT_MIP:
         self.__n_branch_nodes = 2**self.depth - 1
         self.model = None
 
-    def prep_model(self, X, n_classes):
-        self.__n_classes = n_classes
-        self.__n_data, self.__n_features = X.shape
+    # TODO integrate the data handler better
+    def prep_model(self, data_handler):
+        self.__n_classes = data_handler.n_classes
+        self.__n_data = data_handler.n_data
+        self.__n_features = data_handler.n_features
 
-        self.shifts = X.min(axis=0)
-        X -= self.shifts
-        self.scales = X.max(axis=0)
-        self.scales[self.scales == 0] = 1
-        X /= self.scales
-
-        self.epsilons = np.empty((self.__n_features,))
-        for i, col_data in enumerate(X.T):
-            col_sorted = col_data.copy()
-            col_sorted.sort()
-            eps = col_sorted[1:] - col_sorted[:-1]
-            eps[eps == 0] = np.inf
-            self.epsilons[i] = eps.min()
-
-        self.epsilons[self.epsilons == np.inf] = 1 # if all values were same, we actually want eps nonzero to prevent false splitting
+        self.shifts = data_handler.shifts
+        self.scales = data_handler.scales
+        self.epsilons = data_handler.epsilons
 
     def make_model(self, X, y):
         left_ancestors = [] # those where decision went left

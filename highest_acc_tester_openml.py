@@ -1,13 +1,10 @@
-import numpy as np
-import pandas as pd
 import time
 import os
 import pickle
 import argparse
 
-from sklearn.model_selection import train_test_split
-
 from xct_nn.XCT_MIP import XCT_MIP
+from xct_nn.DataHandler import DataHandler
 
 parser = argparse.ArgumentParser()
 # data parameters
@@ -41,15 +38,8 @@ with open(directory+os.listdir(directory)[args.dataset_i], "rb") as f:
 
 print(f"Handling dataset {dataset_name} - {args.dataset_i} in {args.dataset_type}")
 
-X = np.array(X, dtype=float) # the decision variable must not be a part of data
-y, class_mapping = pd.factorize(y)
-y = np.array(y)
-
-n_classes = len(class_mapping)
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
-X_train = X_train[:args.max_data] # limit the ammount of training data
-y_train = y_train[:args.max_data] # limit the ammount of training data
+data_handler = DataHandler(X, y, attribute_names, dataset_name, categorical_indicator)
+X_train, y_train = data_handler.get_training_data(split_seed=0, test_size=0.2, limit=args.max_data)
 
 logfile_base = f"{args.results_dir}/{args.dataset_type}/{args.dataset_i}{dataset_name}"
 time_limit = args.time_limit
@@ -64,7 +54,7 @@ if args.halving:
         m = (high+low) / 2
         xct = XCT_MIP(depth=args.depth, leaf_accuracy=m, only_feasibility=args.feasibility,
                     hard_constraint=args.hard_constr)
-        xct.prep_model(X_train, n_classes)
+        xct.prep_model(data_handler)
         xct.make_model(X_train, y_train)
         res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, log_file=f"{logfile_base}_{m*100:.2f}.log")
         now_time = time.time()
@@ -90,8 +80,8 @@ if args.halving:
     print()
 else:
     print("Creating the model...")
-    xct = XCT_MIP(depth=args.depth)
-    xct.prep_model(X_train, n_classes)
+    xct = XCT_MIP(depth=args.depth, hard_constraint=args.hard_constr)
+    xct.prep_model(data_handler)
     xct.make_model(X_train, y_train)
     print("Optimizing the model...")
     res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, log_file=f"{logfile_base}_direct.log")
