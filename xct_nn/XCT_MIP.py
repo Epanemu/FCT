@@ -2,39 +2,21 @@ import gurobipy as gb
 import numpy as np
 
 class XCT_MIP:
-    def __init__(self, depth, leaf_accuracy=0.9, min_in_leaf=1, leaf_acc_limit=20, max_invalid=None, only_feasibility=False, hard_constraint=False, maximize_leaf_accuracy=False):
+    def __init__(self, depth, data_handler, min_in_leaf=1, leaf_accuracy=None, leaf_acc_limit=20, max_invalid=None, only_feasibility=False, hard_constraint=False):
         self.depth = depth
-        self.leaf_accuracy = leaf_accuracy
+        self.data_h = data_handler
         self.min_in_leaf = min_in_leaf
+        self.leaf_accuracy = leaf_accuracy
+        self.maximize_leaf_accuracy = leaf_accuracy is None
         self.leaf_acc_limit = leaf_acc_limit
-        self.max_invalid = leaf_acc_limit * (1-leaf_accuracy) if max_invalid is None else max_invalid
+        if not self.maximize_leaf_accuracy:
+            self.max_invalid = leaf_acc_limit * (1-leaf_accuracy) if max_invalid is None else max_invalid
         self.only_feasibility = only_feasibility
         self.hard_constraint = hard_constraint
-        self.maximize_leaf_accuracy = maximize_leaf_accuracy
-        self.model = None
-
-    def prep_model(self, X, n_classes):
-        self.__n_classes = n_classes
-        self.__n_data, self.__n_features = X.shape
-
-        self.shifts = X.min(axis=0)
-        X -= self.shifts
-        self.scales = X.max(axis=0)
-        self.scales[self.scales == 0] = 1
-        X /= self.scales
-
-        self.epsilons = np.empty((self.__n_features,))
-        for i, col_data in enumerate(X.T):
-            col_sorted = col_data.copy()
-            col_sorted.sort()
-            eps = col_sorted[1:] - col_sorted[:-1]
-            eps[eps == 0] = np.inf
-            self.epsilons[i] = eps.min()
-
-        self.epsilons[self.epsilons == np.inf] = 1 # if all values were same, we actually want eps nonzero to prevent false splitting
 
         self.__n_leaf_nodes = 2**self.depth
         self.__n_branch_nodes = 2**self.depth - 1
+        self.model = None
 
     def make_model(self, X, y):
         left_ancestors = [] # those where decision went left
@@ -63,7 +45,7 @@ class XCT_MIP:
         self.model = gb.Model("XCT model")
 
         # branch nodes computation conditions
-        a = self.model.addMVar((self.__n_features, self.__n_branch_nodes), vtype=gb.GRB.BINARY, name="a")
+        a = self.model.addMVar((self.data_h.n_features, self.__n_branch_nodes), vtype=gb.GRB.BINARY, name="a")
         b = self.model.addMVar((self.__n_branch_nodes,), lb=0, ub=1, vtype=gb.GRB.CONTINUOUS, name="b")
 
         # variable d replaced with set 1
@@ -71,7 +53,7 @@ class XCT_MIP:
         self.model.addConstr(b <= 1) # (3)
 
         # leaf nodes assignment conditions
-        point_assigned = self.model.addMVar((self.__n_data, self.__n_leaf_nodes), vtype=gb.GRB.BINARY, name="point_assigned") # variable z
+        point_assigned = self.model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), vtype=gb.GRB.BINARY, name="point_assigned") # variable z
         any_assigned = self.model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="any_assigned") # variable l
         self.model.addConstr(point_assigned <= any_assigned) # (6)
         # if any point is assigned, the node must be assigned at least self.min_in_leaf in total
@@ -80,28 +62,28 @@ class XCT_MIP:
         self.model.addConstr(point_assigned.sum(axis=1) == 1) # (8)
 
         M_right = 1
-        M_left = 1 + self.epsilons.max()
+        M_left = 1 + self.data_h.epsilons.max()
         # conditions for assignment to node
         for leaf_i in range(self.__n_leaf_nodes):
             if right_ancestors[leaf_i]: # causes issues if there are no ancestors
                 self.model.addConstr(X @ a[:, right_ancestors[leaf_i]] >= b[np.newaxis, right_ancestors[leaf_i]] - M_right*(1-point_assigned[:,[leaf_i]])) # (10)
             if left_ancestors[leaf_i]:
-                self.model.addConstr((X + self.epsilons) @ a[:, left_ancestors[leaf_i]] <= b[np.newaxis, left_ancestors[leaf_i]] + M_left*(1-point_assigned[:,[leaf_i]])) # (12)
+                self.model.addConstr((X + self.data_h.epsilons) @ a[:, left_ancestors[leaf_i]] <= b[np.newaxis, left_ancestors[leaf_i]] + M_left*(1-point_assigned[:,[leaf_i]])) # (12)
 
         # classification
         # Y reworked to 0 or 1
-        Y = np.zeros((self.__n_classes, self.__n_data))
-        for c in range(self.__n_classes):
+        Y = np.zeros((self.data_h.n_classes, self.data_h.n_data))
+        for c in range(self.data_h.n_classes):
             Y[c, y == c] = 1
 
-        class_points_in_leaf = self.model.addMVar((self.__n_classes, self.__n_leaf_nodes), name="N_class_points_in_leaf") # variable N_kt
+        class_points_in_leaf = self.model.addMVar((self.data_h.n_classes, self.__n_leaf_nodes), name="N_class_points_in_leaf") # variable N_kt
         self.model.addConstr(class_points_in_leaf == Y @ point_assigned) # (15)
 
-        # TODO could be ommitted, likely
+        # extra variable could be ommitted. It is here to provide simpler information and less occlusion in other constraints
         points_in_leaf = self.model.addMVar((self.__n_leaf_nodes,), name="N_points_in_leaf") # variable N_t
         self.model.addConstr(points_in_leaf == point_assigned.sum(axis=0)) # (16)
 
-        class_in_leaf = self.model.addMVar((self.__n_classes, self.__n_leaf_nodes), vtype=gb.GRB.BINARY, name="class_in_leaf") # variable c
+        class_in_leaf = self.model.addMVar((self.data_h.n_classes, self.__n_leaf_nodes), vtype=gb.GRB.BINARY, name="class_in_leaf") # variable c
         # if any nodes are assigned to leaf, it needs a class
         self.model.addConstr(class_in_leaf.sum(axis=0) == any_assigned) # (18)
 
@@ -115,20 +97,38 @@ class XCT_MIP:
             "class_in_leaf": class_in_leaf,
         }
 
+        if not self.hard_constraint:
+            # must add variable signifying what constraint is used
+            use_acc = self.model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
+            self.vars["use_acc"] = use_acc
+            self.model.addConstr(use_acc <= points_in_leaf / self.leaf_acc_limit)
+            self.model.addConstr(use_acc >= (points_in_leaf - self.leaf_acc_limit + 1) / self.data_h.n_data)
+        M = self.data_h.n_data
+
         if self.maximize_leaf_accuracy:
             # how much accuracy can a datapoint in a leaf give
-            accuracy_ammount = self.model.addMVar((self.__n_data, self.__n_leaf_nodes), lb=0, ub=1, name="accuracy_ammount")
+            accuracy_ammount = self.model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), lb=0, ub=1, name="accuracy_ammount")
             self.vars["accuracy_ammount"] = accuracy_ammount
-            self.model.addConstr(accuracy_ammount.sum(axis=0) == any_assigned)  # ideal is 100% acuracy (1)
+            if self.hard_constraint:
+                self.model.addConstr(accuracy_ammount.sum(axis=0) == any_assigned)  # ideal is 100% acuracy
+            else:
+                # the soft accuracy works as follows: if it does not use the hard accuracy, it sets the total accuracy to
+                # a higher ammount
+                # this is incorrect TODO MAKE A PROPER VALID PROPOSAL
+                self.model.addConstr(accuracy_ammount.sum(axis=0) <= any_assigned + (1 - use_acc) * self.leaf_acc_limit)
+                self.model.addConstr(accuracy_ammount.sum(axis=0) >= any_assigned + (use_acc - 1))
+                self.model.addConstr(accuracy_ammount.sum(axis=0) <= self.leaf_acc_limit / points_in_leaf + M*use_acc)
+                self.model.addConstr(accuracy_ammount.sum(axis=0) >= self.leaf_acc_limit / points_in_leaf - M*use_acc) # might require ub > 1
+
             self.model.addConstr(accuracy_ammount <= point_assigned) # must be assigned to this leaf, to give any potential accuracy
-            for i in range(self.__n_data):
-                for j in range(i+1, self.__n_data):
+            for i in range(self.data_h.n_data):
+                for j in range(i+1, self.data_h.n_data):
                     # accuracy ammount must be equal if they are both assigned to the leaf
                     self.model.addConstr(accuracy_ammount[i] <= accuracy_ammount[j] + (2 - point_assigned[i] - point_assigned[j]))
                     self.model.addConstr(accuracy_ammount[i] >= accuracy_ammount[j] + (point_assigned[i] + point_assigned[j] - 2))
 
             # how much accuracy each datapoint in a leaf gives
-            assigned_accuracy = self.model.addMVar((self.__n_data, self.__n_leaf_nodes), lb=0, ub=1, name="assigned_accuracy")
+            assigned_accuracy = self.model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), lb=0, ub=1, name="assigned_accuracy")
             self.vars["assigned_accuracy"] = assigned_accuracy
             self.model.addConstr(assigned_accuracy <= accuracy_ammount) # accuracy can be either equal to its potential or to 0
             self.model.addConstr(assigned_accuracy >= accuracy_ammount + (Y.T @ class_in_leaf - 1)) # force it equal to potential
@@ -141,7 +141,6 @@ class XCT_MIP:
             self.model.setObjective(leaf_acc, sense=gb.GRB.MAXIMIZE)
         else:
             # original accuracy measure
-            M = self.__n_data
             misclassified = self.model.addMVar((self.__n_leaf_nodes,), lb=0, name="n_misclassfiied") # variable L (misclassification loss)
             self.vars["misclassified"] = misclassified
             # essentially looks for minimum of the number of misclassified samples
@@ -156,16 +155,12 @@ class XCT_MIP:
                 self.model.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy))
             else:
                 # SOFT CONSTRAINT
-                use_acc = self.model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
-                self.vars["use_acc"] = use_acc
-                self.model.addConstr(use_acc <= points_in_leaf / self.leaf_acc_limit)
-                self.model.addConstr(use_acc >= (points_in_leaf - self.leaf_acc_limit + 1) / self.__n_data)
                 self.model.addConstr(misclassified <= self.max_invalid + M * use_acc)
                 self.model.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy) + M * (1 - use_acc))
 
 
             # normalize by the number of misclassified points, if simply the most represented class would be estimated
-            base_error = self.__n_data - Y.sum(axis=1).max()
+            base_error = self.data_h.n_data - Y.sum(axis=1).max()
             if self.only_feasibility:
                 self.model.setObjective(0, sense=gb.GRB.MINIMIZE) # test feasibility
             else:
@@ -173,7 +168,7 @@ class XCT_MIP:
 
         self.model.update()
 
-    def optimize(self, warmstart_values=None, time_limit=3600, verbose=False, log_file=""):
+    def optimize(self, warmstart_values=None, time_limit=3600, mem_limit=None, n_threads=None, verbose=False, log_file=""):
         assert self.model is not None
 
         # warm start
@@ -195,6 +190,12 @@ class XCT_MIP:
             else:
                 self.model.params.OutputFlag = 0
         self.model.params.TimeLimit = time_limit
+        if mem_limit is not None:
+            self.model.params.SoftMemLimit = mem_limit
+        self.model.params.NodefileStart = 0.5
+        self.model.params.NodefileDir = "nodefiles"
+        if n_threads is not None:
+            self.model.params.Threads = n_threads
 
         self.model.optimize()
 
@@ -215,19 +216,19 @@ class XCT_MIP:
             return f"ST{self.model.status}"
 
     def get_base_context(self):
-        return self.vars["a"].X, self.vars["b"].X, self.shifts, self.scales, self.epsilons, self.depth
+        return self.vars["a"].X, self.vars["b"].X, self.vars["class_in_leaf"].X, self.data_h, self.depth
 
     def load_sol(self, sol_file):
         tmp_model = gb.Model()
         tmp_model.params.OutputFlag = 0
 
-        a = tmp_model.addMVar((self.__n_features, self.__n_branch_nodes), vtype=gb.GRB.BINARY, name="a")
+        a = tmp_model.addMVar((self.data_h.n_features, self.__n_branch_nodes), vtype=gb.GRB.BINARY, name="a")
         b = tmp_model.addMVar((self.__n_branch_nodes,), lb=0, ub=1, vtype=gb.GRB.CONTINUOUS, name="b")
-        point_assigned = tmp_model.addMVar((self.__n_data, self.__n_leaf_nodes), vtype=gb.GRB.BINARY, name="point_assigned") # variable z
+        point_assigned = tmp_model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), vtype=gb.GRB.BINARY, name="point_assigned") # variable z
         any_assigned = tmp_model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="any_assigned") # variable l
-        class_points_in_leaf = tmp_model.addMVar((self.__n_classes, self.__n_leaf_nodes), name="N_class_points_in_leaf") # variable N_kt
+        class_points_in_leaf = tmp_model.addMVar((self.data_h.n_classes, self.__n_leaf_nodes), name="N_class_points_in_leaf") # variable N_kt
         points_in_leaf = tmp_model.addMVar((self.__n_leaf_nodes,), name="N_points_in_leaf") # variable N_t
-        class_in_leaf = tmp_model.addMVar((self.__n_classes, self.__n_leaf_nodes), vtype=gb.GRB.BINARY, name="class_in_leaf") # variable c
+        class_in_leaf = tmp_model.addMVar((self.data_h.n_classes, self.__n_leaf_nodes), vtype=gb.GRB.BINARY, name="class_in_leaf") # variable c
 
         self.vars = {
             "a": a,
@@ -239,9 +240,13 @@ class XCT_MIP:
             "class_in_leaf": class_in_leaf,
         }
 
+        if not self.hard_constraint:
+            use_acc = tmp_model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
+            self.vars["use_acc"] = use_acc
+
         if self.maximize_leaf_accuracy:
-            accuracy_ammount = self.model.addMVar((self.__n_data, self.__n_leaf_nodes), lb=0, ub=1, name="accuracy_ammount")
-            assigned_accuracy = self.model.addMVar((self.__n_data, self.__n_leaf_nodes), lb=0, ub=1, name="assigned_accuracy")
+            accuracy_ammount = self.model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), lb=0, ub=1, name="accuracy_ammount")
+            assigned_accuracy = self.model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), lb=0, ub=1, name="assigned_accuracy")
             leaf_acc = self.model.addVar(lb=0, ub=1, name="leaf_accuracy")
             self.vars["accuracy_ammount"] = accuracy_ammount
             self.vars["assigned_accuracy"] = assigned_accuracy
@@ -249,9 +254,6 @@ class XCT_MIP:
         else:
             misclassified = tmp_model.addMVar((self.__n_leaf_nodes,), lb=0, name="n_misclassfiied") # variable L (misclassification loss)
             self.vars["misclassified"] = misclassified
-            if not self.hard_constraint:
-                use_acc = tmp_model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
-                self.vars["use_acc"] = use_acc
 
         tmp_model.update()
         tmp_model.read(sol_file)

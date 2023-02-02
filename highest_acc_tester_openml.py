@@ -1,13 +1,10 @@
-import numpy as np
-import pandas as pd
 import time
 import os
 import pickle
 import argparse
 
-from sklearn.model_selection import train_test_split
-
-from XCT import XCT_MIP
+from xct_nn.XCT_MIP import XCT_MIP
+from xct_nn.DataHandler import DataHandler
 
 parser = argparse.ArgumentParser()
 # data parameters
@@ -24,6 +21,8 @@ parser.add_argument("-d", "--depth", type=int, default=5, help="Depth of the tre
 parser.add_argument("-max", "--max_data", type=int, default=50_000, help="Limit on data inputed into the model")
 # optimization parameters
 parser.add_argument("-t", "--time_limit", type=int, default=3600, help="Time limit for optimization [s]")
+parser.add_argument("-m", "--memory_limit", type=int, default=None, help="Memory limit for gurobi [GB]")
+parser.add_argument("-thr", "--n_threads", type=int, default=None, help="Number of threads for gurobi to use")
 
 # halving method paramters
 parser.add_argument("--halving", action="store_true", help="Use the interval halving method")
@@ -39,15 +38,8 @@ with open(directory+os.listdir(directory)[args.dataset_i], "rb") as f:
 
 print(f"Handling dataset {dataset_name} - {args.dataset_i} in {args.dataset_type}")
 
-X = np.array(X, dtype=float) # the decision variable must not be a part of data
-y, class_mapping = pd.factorize(y)
-y = np.array(y)
-
-n_classes = len(class_mapping)
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
-X_train = X_train[:args.max_data] # limit the ammount of training data
-y_train = y_train[:args.max_data] # limit the ammount of training data
+data_handler = DataHandler(X, y, attribute_names, dataset_name, categorical_indicator)
+X_train, y_train = data_handler.get_training_data(split_seed=0, test_size=0.2, limit=args.max_data)
 
 logfile_base = f"{args.results_dir}/{args.dataset_type}/{args.dataset_i}{dataset_name}"
 time_limit = args.time_limit
@@ -60,16 +52,15 @@ if args.halving:
     last_time = time.time()
     while high - low > args.required_prec:
         m = (high+low) / 2
-        xct = XCT_MIP(depth=args.depth, leaf_accuracy=m, only_feasibility=args.feasibility,
+        xct = XCT_MIP(args.depth, data_handler, leaf_accuracy=m, only_feasibility=args.feasibility,
                     hard_constraint=args.hard_constr)
-        xct.prep_model(X_train, n_classes)
         xct.make_model(X_train, y_train)
-        res = xct.optimize(time_limit=time_limit, log_file=f"{logfile_base}_{m*100:.2f}.log")
+        res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, log_file=f"{logfile_base}_{m*100:.2f}.log")
         now_time = time.time()
 
         if res:
             best_model = xct.model
-            with open(f"{logfile_base}_{low*100:.2f}.ctx", "wb") as f:
+            with open(f"{logfile_base}_{m*100:.2f}.ctx", "wb") as f:
                 pickle.dump(xct.get_base_context(), f)
 
         print(f"Attempted {m*100} accuracy - {res} in {(now_time - last_time):.2f} sec")
@@ -88,11 +79,10 @@ if args.halving:
     print()
 else:
     print("Creating the model...")
-    xct = XCT_MIP(depth=args.depth, maximize_leaf_accuracy=True)
-    xct.prep_model(X_train, n_classes)
+    xct = XCT_MIP(args.depth, data_handler, hard_constraint=args.hard_constr)
     xct.make_model(X_train, y_train)
     print("Optimizing the model...")
-    res = xct.optimize(time_limit=time_limit, log_file=f"{logfile_base}_direct.log")
+    res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, log_file=f"{logfile_base}_direct.log")
 
     status = xct.get_humanlike_status()
 
@@ -102,9 +92,9 @@ else:
         with open(f"{logfile_base}_{status}_{acc*100:.2f}.ctx", "wb") as f:
             pickle.dump(xct.get_base_context(), f)
 
-        xct.model.write(f"{logfile_base}_{status}_{acc*100:.2f}.mps")
+        # xct.model.write(f"{logfile_base}_{status}_{acc*100:.2f}.mps")
         xct.model.write(f"{logfile_base}_{status}_{acc*100:.2f}.sol")
-        print(f"Found a solution with {acc} leaf accuracy - {status}")
+        print(f"Found a solution with {acc*100} leaf accuracy - {status}")
     else:
         print(f"Did not find any solution - {status}")
         if status == "INF":
