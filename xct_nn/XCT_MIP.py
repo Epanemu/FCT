@@ -112,13 +112,6 @@ class XCT_MIP:
             self.vars["accuracy_ammount"] = accuracy_ammount
             self.model.addConstr(accuracy_ammount.sum(axis=0) == any_assigned)  # ideal is 100% acuracy
 
-            # self.model.addConstr(accuracy_ammount <= point_assigned) # must be assigned to this leaf, to give any potential accuracy
-            # for i in range(self.data_h.n_data):
-            #     for j in range(i+1, self.data_h.n_data):
-            #         # accuracy ammount must be equal if they are both assigned to the leaf
-            #         self.model.addConstr(accuracy_ammount[i] <= accuracy_ammount[j] + (2 - point_assigned[i] - point_assigned[j]))
-            #         self.model.addConstr(accuracy_ammount[i] >= accuracy_ammount[j] + (point_assigned[i] + point_assigned[j] - 2))
-
             accuracy_ref = self.model.addMVar((self.__n_leaf_nodes,), lb=0, ub=1, name="accuracy_reference")
             self.vars["accuracy_reference"] = accuracy_ref
             # accuracy equal to 0 if not assigned
