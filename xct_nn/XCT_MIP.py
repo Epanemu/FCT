@@ -100,10 +100,10 @@ class XCT_MIP:
 
         if not self.hard_constraint:
             # must add variable signifying what constraint is used
-            use_acc = self.model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
-            self.vars["use_acc"] = use_acc
-            self.model.addConstr(use_acc <= points_in_leaf / self.leaf_acc_limit)
-            self.model.addConstr(use_acc >= (points_in_leaf - self.leaf_acc_limit + 1) / self.data_h.n_data)
+            is_hard = self.model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="is_hard_constrained")
+            self.vars["is_hard"] = is_hard
+            self.model.addConstr(is_hard <= points_in_leaf / self.leaf_acc_limit)
+            self.model.addConstr(is_hard >= (points_in_leaf - self.leaf_acc_limit + 1) / self.data_h.n_data)
         M = self.data_h.n_data
 
         if self.maximize_leaf_accuracy:
@@ -168,8 +168,8 @@ class XCT_MIP:
                 self.model.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy))
             else:
                 # SOFT CONSTRAINT
-                self.model.addConstr(misclassified <= self.max_invalid + M * use_acc)
-                self.model.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy) + M * (1 - use_acc))
+                self.model.addConstr(misclassified <= self.max_invalid + M * is_hard)
+                self.model.addConstr(misclassified <= points_in_leaf * (1 - self.leaf_accuracy) + M * (1 - is_hard))
 
 
             # normalize by the number of misclassified points, if simply the most represented class would be estimated
@@ -267,8 +267,8 @@ class XCT_MIP:
         }
 
         if not self.hard_constraint:
-            use_acc = self.__dummy_model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
-            self.vars["use_acc"] = use_acc
+            is_hard = self.__dummy_model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="is_hard_constrained")
+            self.vars["is_hard"] = is_hard
 
         if self.maximize_leaf_accuracy:
             accuracy_ammount = self.__dummy_model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), lb=0, ub=1, name="accuracy_ammount")
