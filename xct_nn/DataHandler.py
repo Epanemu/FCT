@@ -52,6 +52,11 @@ class DataHandler:
     def unnormalize(self, X):
         return X * self.__scales + self.__shifts
 
+    def set_normalizers(self, shifts, scales):
+        print("SHOULD NOT USE set_normalizers, only in case of information lost")
+        self.__scales = scales
+        self.__shifts = shifts
+
     @property
     def n_data(self):
         return self.__n_data

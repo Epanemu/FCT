@@ -9,8 +9,9 @@ class XCT_MIP:
         self.leaf_accuracy = leaf_accuracy
         self.maximize_leaf_accuracy = leaf_accuracy is None
         self.leaf_acc_limit = leaf_acc_limit
-        if not self.maximize_leaf_accuracy:
-            self.max_invalid = leaf_acc_limit * (1-leaf_accuracy) if max_invalid is None else max_invalid
+        self.max_invalid = max_invalid
+        if max_invalid is None and leaf_accuracy is not None:
+            self.max_invalid = leaf_acc_limit * (1-leaf_accuracy)
         self.only_feasibility = only_feasibility
         self.hard_constraint = hard_constraint
 
@@ -118,7 +119,11 @@ class XCT_MIP:
                 self.model.addConstr(accuracy_ammount.sum(axis=0) <= any_assigned + (1 - use_acc) * self.leaf_acc_limit)
                 self.model.addConstr(accuracy_ammount.sum(axis=0) >= any_assigned + (use_acc - 1))
                 self.model.addConstr(accuracy_ammount.sum(axis=0) <= self.leaf_acc_limit / points_in_leaf + M*use_acc)
-                self.model.addConstr(accuracy_ammount.sum(axis=0) >= self.leaf_acc_limit / points_in_leaf - M*use_acc) # might require ub > 1
+                self.model.addConstr(accuracy_ammount.sum(axis=0) >= self.leaf_acc_limit / points_in_leaf - M*use_acc)
+                # USE THE MISCLASSIFIED vars as later, but set the constraint like so:
+                self.model.addConstr(misclassified <= self.leaf_acc_limit * (1 - leaf_acc))
+                # but only this or the classical one should kick in, depending on use_acc
+
 
             self.model.addConstr(accuracy_ammount <= point_assigned) # must be assigned to this leaf, to give any potential accuracy
             for i in range(self.data_h.n_data):
@@ -182,7 +187,7 @@ class XCT_MIP:
         if verbose:
             self.model.update()
             self.model.printStats()
-            # self.model.display()
+            self.model.display()
         else:
             if log_file != "":
                 self.model.params.LogFile = log_file
@@ -216,19 +221,32 @@ class XCT_MIP:
             return f"ST{self.model.status}"
 
     def get_base_context(self):
-        return self.vars["a"].X, self.vars["b"].X, self.vars["class_in_leaf"].X, self.data_h, self.depth
+        return {
+            "depth": self.depth,
+            "data_h": self.data_h,
+            "min_in_leaf": self.min_in_leaf,
+            "leaf_accuracy": self.leaf_accuracy,
+            "maximize_leaf_accuracy": self.maximize_leaf_accuracy,
+            "leaf_acc_limit": self.leaf_acc_limit,
+            "max_invalid": self.max_invalid,
+            "only_feasibility": self.only_feasibility,
+            "hard_constraint": self.hard_constraint,
+            "a": self.vars["a"].X,
+            "b": self.vars["b"].X,
+            "classes": self.vars["class_in_leaf"].X
+        }
 
     def load_sol(self, sol_file):
-        tmp_model = gb.Model()
-        tmp_model.params.OutputFlag = 0
+        self.__dummy_model = gb.Model()
+        self.__dummy_model.params.OutputFlag = 0
 
-        a = tmp_model.addMVar((self.data_h.n_features, self.__n_branch_nodes), vtype=gb.GRB.BINARY, name="a")
-        b = tmp_model.addMVar((self.__n_branch_nodes,), lb=0, ub=1, vtype=gb.GRB.CONTINUOUS, name="b")
-        point_assigned = tmp_model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), vtype=gb.GRB.BINARY, name="point_assigned") # variable z
-        any_assigned = tmp_model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="any_assigned") # variable l
-        class_points_in_leaf = tmp_model.addMVar((self.data_h.n_classes, self.__n_leaf_nodes), name="N_class_points_in_leaf") # variable N_kt
-        points_in_leaf = tmp_model.addMVar((self.__n_leaf_nodes,), name="N_points_in_leaf") # variable N_t
-        class_in_leaf = tmp_model.addMVar((self.data_h.n_classes, self.__n_leaf_nodes), vtype=gb.GRB.BINARY, name="class_in_leaf") # variable c
+        a = self.__dummy_model.addMVar((self.data_h.n_features, self.__n_branch_nodes), vtype=gb.GRB.BINARY, name="a")
+        b = self.__dummy_model.addMVar((self.__n_branch_nodes,), lb=0, ub=1, vtype=gb.GRB.CONTINUOUS, name="b")
+        point_assigned = self.__dummy_model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), vtype=gb.GRB.BINARY, name="point_assigned") # variable z
+        any_assigned = self.__dummy_model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="any_assigned") # variable l
+        class_points_in_leaf = self.__dummy_model.addMVar((self.data_h.n_classes, self.__n_leaf_nodes), name="N_class_points_in_leaf") # variable N_kt
+        points_in_leaf = self.__dummy_model.addMVar((self.__n_leaf_nodes,), name="N_points_in_leaf") # variable N_t
+        class_in_leaf = self.__dummy_model.addMVar((self.data_h.n_classes, self.__n_leaf_nodes), vtype=gb.GRB.BINARY, name="class_in_leaf") # variable c
 
         self.vars = {
             "a": a,
@@ -241,22 +259,22 @@ class XCT_MIP:
         }
 
         if not self.hard_constraint:
-            use_acc = tmp_model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
+            use_acc = self.__dummy_model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="uses_accuracy")
             self.vars["use_acc"] = use_acc
 
         if self.maximize_leaf_accuracy:
-            accuracy_ammount = self.model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), lb=0, ub=1, name="accuracy_ammount")
-            assigned_accuracy = self.model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), lb=0, ub=1, name="assigned_accuracy")
-            leaf_acc = self.model.addVar(lb=0, ub=1, name="leaf_accuracy")
+            accuracy_ammount = self.__dummy_model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), lb=0, ub=1, name="accuracy_ammount")
+            assigned_accuracy = self.__dummy_model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), lb=0, ub=1, name="assigned_accuracy")
+            leaf_acc = self.__dummy_model.addVar(lb=0, ub=1, name="leaf_accuracy")
             self.vars["accuracy_ammount"] = accuracy_ammount
             self.vars["assigned_accuracy"] = assigned_accuracy
             self.vars["leaf_acc"] = leaf_acc
         else:
-            misclassified = tmp_model.addMVar((self.__n_leaf_nodes,), lb=0, name="n_misclassfiied") # variable L (misclassification loss)
+            misclassified = self.__dummy_model.addMVar((self.__n_leaf_nodes,), lb=0, name="n_misclassfiied") # variable L (misclassification loss)
             self.vars["misclassified"] = misclassified
 
-        tmp_model.update()
-        tmp_model.read(sol_file)
-        tmp_model.optimize()
+        self.__dummy_model.update()
+        self.__dummy_model.read(sol_file)
+        self.__dummy_model.optimize()
 
         self.model = None # should not optimize after this, need to rebuild the model
