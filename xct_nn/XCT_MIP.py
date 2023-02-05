@@ -51,7 +51,7 @@ class XCT_MIP:
 
         # variable d replaced with set 1
         self.model.addConstr(a.sum(axis=0) == 1) # (2)
-        self.model.addConstr(b <= 1) # (3)
+        # self.model.addConstr(b <= 1) # (3)
 
         # leaf nodes assignment conditions
         point_assigned = self.model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), vtype=gb.GRB.BINARY, name="point_assigned") # variable z
