@@ -1,4 +1,5 @@
 import numpy as np
+from graphviz import Digraph
 
 class ClassificationTree:
     def __init__(self, model_context, decision_features, thresholds, leaf_assignments):
@@ -15,7 +16,6 @@ class ClassificationTree:
     def predict(self, x):
         i = 0
         while i < self.__n_branch_nodes:
-            # TODO capture node stats for visualization (how many points at each node)
             if x[self.__decision_features[i]] < self.__thresholds[i]:
                 i = i*2 + 1
             else:
@@ -48,7 +48,7 @@ class ClassificationTree:
             return acc
 
     def compute_leaf_accuracy(self, X, y, return_computed=True):
-        # significantly faster
+        # computes everything at once...
         decisions = X[:, self.__decision_features] < self.__thresholds
         indices = np.zeros_like(y, dtype=int)
         i_vals = np.zeros((self.__n_branch_nodes,), dtype=int)
@@ -64,8 +64,8 @@ class ClassificationTree:
         leaf_indices = indices - self.__n_branch_nodes
         tot_corr = self.__leaf_assignments[leaf_indices] == y
 
-        leaf_corr = np.zeros((self.__n_decision_nodes,))
-        leaf_tot = np.zeros((self.__n_decision_nodes,))
+        leaf_corr = np.zeros((self.__n_decision_nodes,), dtype=int)
+        leaf_tot = np.zeros((self.__n_decision_nodes,), dtype=int)
         for i in range(self.__n_decision_nodes):
             leaf_corr[i] = np.sum(tot_corr[leaf_indices == i])
             leaf_tot[i] = np.sum(leaf_indices == i)
@@ -86,3 +86,31 @@ class ClassificationTree:
             return np.nanmin(leaf_acc), tot_corr.mean()
         else:
             return leaf_acc, tot_corr
+
+    def visualize(self, path, view=False, data_handler=None):
+        data_h = data_handler if data_handler is not None else self.__model_context["data_h"]
+        dot = Digraph(comment="example")
+
+        # for d in range(depth):
+        dot.node("bra0", f"[{self.__decision_features[0]}]", tooltip="tmp", shape="rect")
+        for node in range(1, self.__n_branch_nodes):
+            dot.node(f"bra{node}", f"[{self.__decision_features[node]}]", tooltip="tmp", shape="rect")
+
+            parent_i = (node-1) // 2
+            # edge_desc = f"< {self.__thresholds[parent_i]:.2f}" if node % 2 == 1 else f"≥ {self.__thresholds[parent_i]:.2f}"
+            edge_desc = f"< {self.__model_context['b'][parent_i]:.2f}" if node % 2 == 1 else f"≥ {self.__model_context['b'][parent_i]:.2f}"
+            dot.edge(f"bra{parent_i}", f"bra{node}", edge_desc)
+
+        offset = self.__n_branch_nodes - 1
+        for node, c in enumerate(self.__leaf_assignments):
+            desc =  f"{self.__accuracy_context['leaf_total'][node]} ({self.__accuracy_context['leaf_acc'][node]:.2f})"
+            dot.node(f"dec{node}", desc, tooltip="tmp", shape="circle", color="red" if c == 1 else "green")#, style="filled")
+            # dot.node(f"dec{node}", f"{data_h.class_mapping[c]}", tooltip="tmp", shape="circle", color="red" if c == 1 else "green", style="filled")
+
+            parent_i = (node+offset) // 2
+            # edge_desc = f"< {self.__thresholds[parent_i]:.2f}" if node % 2 == 0 else f"≥ {self.__thresholds[parent_i]:.2f}"
+            edge_desc = f"< {self.__model_context['b'][parent_i]:.2f}" if node % 2 == 0 else f"≥ {self.__model_context['b'][parent_i]:.2f}"
+            dot.edge(f"bra{parent_i}", f"dec{node}", edge_desc)
+
+        dot.format = "pdf"
+        dot.render(path, view=view)
