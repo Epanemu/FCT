@@ -13,6 +13,7 @@ parser.add_argument("-type", "--dataset_type", required=True, help="Either categ
 
 # output parameters
 parser.add_argument("-res", "--results_dir", required=True, help="Where to store the results")
+parser.add_argument("-v", "--verbose",  action="store_true", help="Print model and stats to stdout")
 
 # model parameters
 parser.add_argument("-feas", "--feasibility", action="store_true", help="Aim for feasibility only")
@@ -55,7 +56,7 @@ if args.halving:
         xct = XCT_MIP(args.depth, data_handler, leaf_accuracy=m, only_feasibility=args.feasibility,
                     hard_constraint=args.hard_constr)
         xct.make_model(X_train, y_train)
-        res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, log_file=f"{logfile_base}_{m*100:.2f}.log")
+        res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, log_file=f"{logfile_base}_{m*100:.2f}.log", verbose=args.verbose)
         now_time = time.time()
 
         if res:
@@ -82,7 +83,7 @@ else:
     xct = XCT_MIP(args.depth, data_handler, hard_constraint=args.hard_constr)
     xct.make_model(X_train, y_train)
     print("Optimizing the model...")
-    res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, log_file=f"{logfile_base}_direct.log")
+    res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, log_file=f"{logfile_base}_direct.log", verbose=args.verbose)
 
     status = xct.get_humanlike_status()
 

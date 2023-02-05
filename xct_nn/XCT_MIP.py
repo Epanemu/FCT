@@ -187,7 +187,7 @@ class XCT_MIP:
         if verbose:
             self.model.update()
             self.model.printStats()
-            # self.model.display()
+            self.model.display()
         else:
             if log_file != "":
                 self.model.params.LogFile = log_file
