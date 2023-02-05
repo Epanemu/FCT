@@ -125,12 +125,20 @@ class XCT_MIP:
                 # but only this or the classical one should kick in, depending on use_acc
 
 
-            self.model.addConstr(accuracy_ammount <= point_assigned) # must be assigned to this leaf, to give any potential accuracy
-            for i in range(self.data_h.n_data):
-                for j in range(i+1, self.data_h.n_data):
-                    # accuracy ammount must be equal if they are both assigned to the leaf
-                    self.model.addConstr(accuracy_ammount[i] <= accuracy_ammount[j] + (2 - point_assigned[i] - point_assigned[j]))
-                    self.model.addConstr(accuracy_ammount[i] >= accuracy_ammount[j] + (point_assigned[i] + point_assigned[j] - 2))
+            # self.model.addConstr(accuracy_ammount <= point_assigned) # must be assigned to this leaf, to give any potential accuracy
+            # for i in range(self.data_h.n_data):
+            #     for j in range(i+1, self.data_h.n_data):
+            #         # accuracy ammount must be equal if they are both assigned to the leaf
+            #         self.model.addConstr(accuracy_ammount[i] <= accuracy_ammount[j] + (2 - point_assigned[i] - point_assigned[j]))
+            #         self.model.addConstr(accuracy_ammount[i] >= accuracy_ammount[j] + (point_assigned[i] + point_assigned[j] - 2))
+
+            accuracy_ref = self.model.addMVar((self.__n_leaf_nodes,), lb=0, ub=1, name="accuracy_reference")
+            self.vars["accuracy_reference"] = accuracy_ref
+            # accuracy equal to 0 if not assigned
+            self.model.addConstr(accuracy_ammount <= point_assigned)
+            # or to reference if assigned
+            self.model.addConstr(accuracy_ref <= accuracy_ammount + (1 - point_assigned))
+            self.model.addConstr(accuracy_ref >= accuracy_ammount + (point_assigned - 1))
 
             # how much accuracy each datapoint in a leaf gives
             assigned_accuracy = self.model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), lb=0, ub=1, name="assigned_accuracy")
