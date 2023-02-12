@@ -4,12 +4,14 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 class DataHandler:
-    def __init__(self, X, y, attribute_names, dataset_name="", categorical_indicator=None):
+    def __init__(self, X, y, attribute_names, dataset_name="", categorical_indicator=None, round_limit=8):
         self.__feature_names = attribute_names
         self.__dataset_name = dataset_name
         self.__categorical_indicator = categorical_indicator
+        self.__round_limit = round_limit
 
-        self.__X = np.array(X, dtype=float) # the decision variable must not be a part of data, all data is already numerical
+        # the decision variable must not be a part of data, all data is already numerical
+        self.__X = np.array(X, dtype=float).round(round_limit) # round all data for clearer interpretation
         y, self.__class_mapping = pd.factorize(y)
         self.__y = np.array(y)
 
@@ -57,6 +59,10 @@ class DataHandler:
         print("SHOULD NOT USE set_normalizers, only in case of information lost")
         self.__scales = scales
         self.__shifts = shifts
+
+    @property
+    def round_limit(self):
+        return self.__round_limit
 
     @property
     def n_data(self):

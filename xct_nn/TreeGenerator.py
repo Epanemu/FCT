@@ -11,7 +11,7 @@ class TreeGenerator:
 
         decision_features = context["a"].argmax(axis=0)
         thresholds = context["b"] * self.data_h.scales[decision_features] + self.data_h.shifts[decision_features]
-        thresholds = thresholds.round(5)
+        thresholds = thresholds.round(self.data_h.round_limit)
         leaf_assignments = context["classes"].argmax(axis=0)
 
         return ClassificationTree(context, decision_features, thresholds, leaf_assignments)
@@ -22,7 +22,7 @@ class TreeGenerator:
 
         decision_features = a_matrix.argmax(axis=0)
         thresholds = b_matrix * self.data_h.scales[decision_features] + self.data_h.shifts[decision_features]
-        thresholds = thresholds.round(5)
+        thresholds = thresholds.round(self.data_h.round_limit)
         leaf_assignments = classes_matrix.argmax(axis=0)
 
         base_context = {
