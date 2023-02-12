@@ -81,7 +81,7 @@ class ClassificationTree:
         # leaf_acc[np.isnan(leaf_acc)] = 1 # it is better to know which are nans
         self.__accuracy_context["total_acc"] = tot_corr.mean()
         self.__accuracy_context["leaf_acc"] = leaf_acc
-        self.__accuracy_context["leaf_total"] = leaf_tot
+        self.__accuracy_context["leaf_totals"] = leaf_tot
         if return_computed:
             return np.nanmin(leaf_acc), tot_corr.mean()
         else:
@@ -103,7 +103,7 @@ class ClassificationTree:
 
         offset = self.__n_branch_nodes - 1
         for node, c in enumerate(self.__leaf_assignments):
-            desc =  f"{self.__accuracy_context['leaf_total'][node]} ({self.__accuracy_context['leaf_acc'][node]:.2f})"
+            desc =  f"{self.__accuracy_context['leaf_totals'][node]} ({self.__accuracy_context['leaf_acc'][node]:.2f})"
             dot.node(f"dec{node}", desc, tooltip="tmp", shape="circle", color="red" if c == 1 else "green")#, style="filled")
             # dot.node(f"dec{node}", f"{data_h.class_mapping[c]}", tooltip="tmp", shape="circle", color="red" if c == 1 else "green", style="filled")
 
