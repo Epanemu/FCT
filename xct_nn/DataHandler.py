@@ -32,6 +32,7 @@ class DataHandler:
         self.__shifts = X.min(axis=0)
         X -= self.__shifts
         self.__scales = X.max(axis=0)
+        self.__scales /= 10000 # normalized to [0, 10000] for better numerical stability
         self.__scales[self.__scales == 0] = 1
         X /= self.__scales
 

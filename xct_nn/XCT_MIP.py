@@ -47,7 +47,7 @@ class XCT_MIP:
 
         # branch nodes computation conditions
         a = self.model.addMVar((self.data_h.n_features, self.__n_branch_nodes), vtype=gb.GRB.BINARY, name="a")
-        b = self.model.addMVar((self.__n_branch_nodes,), lb=0, ub=1, vtype=gb.GRB.CONTINUOUS, name="b")
+        b = self.model.addMVar((self.__n_branch_nodes,), lb=0, ub=10000, vtype=gb.GRB.CONTINUOUS, name="b")
 
         # variable d replaced with set 1
         self.model.addConstr(a.sum(axis=0) == 1) # (2)
@@ -62,8 +62,8 @@ class XCT_MIP:
         # points assigned to exactly one leaf
         self.model.addConstr(point_assigned.sum(axis=1) == 1) # (8)
 
-        M_right = 1
-        M_left = 1 + self.data_h.epsilons.max()
+        M_right = 10000
+        M_left = 10000 + self.data_h.epsilons.max()
         # conditions for assignment to node
         for leaf_i in range(self.__n_leaf_nodes):
             if right_ancestors[leaf_i]: # causes issues if there are no ancestors
@@ -246,7 +246,7 @@ class XCT_MIP:
         self.__dummy_model.params.OutputFlag = 0
 
         a = self.__dummy_model.addMVar((self.data_h.n_features, self.__n_branch_nodes), vtype=gb.GRB.BINARY, name="a")
-        b = self.__dummy_model.addMVar((self.__n_branch_nodes,), lb=0, ub=1, vtype=gb.GRB.CONTINUOUS, name="b")
+        b = self.__dummy_model.addMVar((self.__n_branch_nodes,), lb=0, ub=10000, vtype=gb.GRB.CONTINUOUS, name="b")
         point_assigned = self.__dummy_model.addMVar((self.data_h.n_data, self.__n_leaf_nodes), vtype=gb.GRB.BINARY, name="point_assigned") # variable z
         any_assigned = self.__dummy_model.addMVar((self.__n_leaf_nodes,), vtype=gb.GRB.BINARY, name="any_assigned") # variable l
         class_points_in_leaf = self.__dummy_model.addMVar((self.data_h.n_classes, self.__n_leaf_nodes), name="N_class_points_in_leaf") # variable N_kt
