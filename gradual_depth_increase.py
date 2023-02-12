@@ -41,7 +41,7 @@ X_train, y_train = data_handler.get_training_data(split_seed=0, test_size=0.2, l
 logfile_base = f"{args.results_dir}/{args.dataset_type}/{args.dataset_i}{dataset_name}"
 time_limit = args.time_limit
 warmstart_values = None
-for depth in range(2, 6):
+for depth in range(1, 6):
     print(f"Creating model with depth {depth}...")
     xct = XCT_MIP(depth, data_handler, hard_constraint=args.hard_constr)
     xct.make_model(X_train, y_train)
