@@ -97,8 +97,8 @@ class ClassificationTree:
             dot.node(f"bra{node}", f"[{self.__decision_features[node]}]", tooltip="tmp", shape="rect")
 
             parent_i = (node-1) // 2
-            # edge_desc = f"< {self.__thresholds[parent_i]:.2f}" if node % 2 == 1 else f"≥ {self.__thresholds[parent_i]:.2f}"
-            edge_desc = f"< {self.__model_context['b'][parent_i]:.2f}" if node % 2 == 1 else f"≥ {self.__model_context['b'][parent_i]:.2f}"
+            edge_desc = f"< {self.__thresholds[parent_i]:.2f}" if node % 2 == 1 else f"≥ {self.__thresholds[parent_i]:.2f}"
+            # edge_desc = f"< {self.__model_context['b'][parent_i]:.2f}" if node % 2 == 1 else f"≥ {self.__model_context['b'][parent_i]:.2f}"
             dot.edge(f"bra{parent_i}", f"bra{node}", edge_desc)
 
         offset = self.__n_branch_nodes - 1
@@ -108,8 +108,8 @@ class ClassificationTree:
             # dot.node(f"dec{node}", f"{data_h.class_mapping[c]}", tooltip="tmp", shape="circle", color="red" if c == 1 else "green", style="filled")
 
             parent_i = (node+offset) // 2
-            # edge_desc = f"< {self.__thresholds[parent_i]:.2f}" if node % 2 == 0 else f"≥ {self.__thresholds[parent_i]:.2f}"
-            edge_desc = f"< {self.__model_context['b'][parent_i]:.2f}" if node % 2 == 0 else f"≥ {self.__model_context['b'][parent_i]:.2f}"
+            edge_desc = f"< {self.__thresholds[parent_i]:.2f}" if node % 2 == 0 else f"≥ {self.__thresholds[parent_i]:.2f}"
+            # edge_desc = f"< {self.__model_context['b'][parent_i]:.2f}" if node % 2 == 0 else f"≥ {self.__model_context['b'][parent_i]:.2f}"
             dot.edge(f"bra{parent_i}", f"dec{node}", edge_desc)
 
         dot.format = "pdf"
