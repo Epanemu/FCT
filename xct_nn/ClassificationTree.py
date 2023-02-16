@@ -75,11 +75,15 @@ class ClassificationTree:
         if "hard_constraint" in self.__model_context:
             if not self.__model_context["hard_constraint"]:
                 bellow_thresh = leaf_tot <= self.__model_context["leaf_acc_limit"]
-                leaf_acc[bellow_thresh] = (leaf_tot[bellow_thresh] - leaf_corr[bellow_thresh]) <= self.__model_context["max_invalid"]
+                misclas = leaf_tot[bellow_thresh] - leaf_corr[bellow_thresh]
+                if self.__model_context["max_invalid"] is not None:
+                    leaf_acc[bellow_thresh] = misclas <= self.__model_context["max_invalid"]
+                else:
+                    leaf_acc[bellow_thresh] = 1 - (misclas / self.__model_context["leaf_acc_limit"])
                 self.__accuracy_context["bellow_threshold"] = bellow_thresh
         # no points in leaf, the accuracy is not influenced
         # leaf_acc[np.isnan(leaf_acc)] = 1 # it is better to know which are nans
-        self.__accuracy_context["total_acc"] = tot_corr.mean()
+        self.__accuracy_context["total_corr"] = tot_corr
         self.__accuracy_context["leaf_acc"] = leaf_acc
         self.__accuracy_context["leaf_totals"] = leaf_tot
         if return_computed:
@@ -114,3 +118,47 @@ class ClassificationTree:
 
         dot.format = "pdf"
         dot.render(path, view=view)
+
+    @property
+    def leaf_totals(self):
+        if "leaf_totals" in self.__accuracy_context:
+            return self.__accuracy_context["leaf_totals"]
+
+    @property
+    def leaf_accuracy(self):
+        if "leaf_acc" in self.__accuracy_context:
+            return self.__accuracy_context["leaf_acc"]
+
+    @property
+    def total_accuracy(self):
+        if "total_corr" in self.__accuracy_context:
+            return self.__accuracy_context["total_corr"].mean()
+
+    @property
+    def correct_classifications(self):
+        if "total_corr" in self.__accuracy_context:
+            return self.__accuracy_context["total_corr"]
+
+    @property
+    def using_soft_constraint(self):
+        if "bellow_threshold" in self.__accuracy_context:
+            self.__accuracy_context["bellow_threshold"]
+
+    @property
+    def depth(self):
+        if "depth" in self.__model_context:
+            return self.__model_context["depth"]
+        else:
+            return np.log2(self.__n_decision_nodes).astype(int)
+
+    @property
+    def decision_features(self):
+        return self.__decision_features
+
+    @property
+    def thresholds(self):
+        return self.__thresholds
+
+    @property
+    def leaf_assignments(self):
+        return self.__leaf_assignments
