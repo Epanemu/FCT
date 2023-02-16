@@ -1,17 +1,25 @@
 import numpy as np
 import pandas as pd
+import pickle
 
 from sklearn.model_selection import train_test_split
 
 class DataHandler:
-    def __init__(self, X, y, attribute_names, dataset_name="", categorical_indicator=None, round_limit=8):
+    def __init__(self, dataset_path, round_limit=5):
+        self.__dataset_path = dataset_path
+        with open(dataset_path, "rb") as f:
+            X, y, categorical_indicator, attribute_names, dataset_name = pickle.load(f)
+
         self.__feature_names = attribute_names
         self.__dataset_name = dataset_name
         self.__categorical_indicator = categorical_indicator
+        if round_limit > 5:
+            print("Rounding to more than 5 decimal numbers may lead to inaccuracies in the model.")
+            print(f"Checkout https://www.gurobi.com/documentation/10.0/refman/feasibilitytol.html for a potential way to help this")
         self.__round_limit = round_limit
 
         # the decision variable must not be a part of data, all data is already numerical
-        self.__X = np.array(X, dtype=float).round(round_limit) # round all data for clearer interpretation
+        self.__X = np.array(X, dtype=float)
         y, self.__class_mapping = pd.factorize(y)
         self.__y = np.array(y)
 
@@ -26,6 +34,10 @@ class DataHandler:
         self.__y_used = y
         if reset_stats:
             self.__generate_stats(X)
+            self.__split_seed = split_seed
+            self.__test_size = test_size
+            self.__limit = limit
+
         self.__n_data = X.shape[0]
         return self.normalize(X), y
 
@@ -34,9 +46,9 @@ class DataHandler:
         self.__shifts = X.min(axis=0)
         X -= self.__shifts
         self.__scales = X.max(axis=0)
-        self.__scales /= 10000 # normalized to [0, 10000] for better numerical stability
         self.__scales[self.__scales == 0] = 1
         X /= self.__scales
+        X = X.round(self.__round_limit) # round all data for clearer interpretation
 
         self.__epsilons = np.empty((self.n_features,))
         for i, col_data in enumerate(X.T):
@@ -50,15 +62,19 @@ class DataHandler:
         self.__epsilons[self.__epsilons == np.inf] = 1
 
     def normalize(self, X):
-        return (X - self.__shifts) / self.__scales
+        return ((X - self.__shifts) / self.__scales).round(self.__round_limit)
 
     def unnormalize(self, X):
         return X * self.__scales + self.__shifts
 
-    def set_normalizers(self, shifts, scales):
-        print("SHOULD NOT USE set_normalizers, only in case of information lost")
-        self.__scales = scales
-        self.__shifts = shifts
+    def get_setup(self):
+        return {
+            "path": self.__dataset_path,
+            "round_limit": self.__round_limit,
+            "split_seed": self.__split_seed,
+            "test_size": self.__test_size,
+            "limit": self.__limit,
+        }
 
     @property
     def round_limit(self):

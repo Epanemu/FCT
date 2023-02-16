@@ -7,11 +7,8 @@ class TreeGenerator:
         self.data_h = data_handler
 
     def make_from_context(self, context):
-        self.data_h = context["data_h"]
-
         decision_features = context["a"].argmax(axis=0)
-        thresholds = context["b"] * self.data_h.scales[decision_features] + self.data_h.shifts[decision_features]
-        thresholds = thresholds.round(self.data_h.round_limit)
+        thresholds = context["b"].round(self.data_h.round_limit) * self.data_h.scales[decision_features] + self.data_h.shifts[decision_features]
         leaf_assignments = context["classes"].argmax(axis=0)
 
         return ClassificationTree(context, decision_features, thresholds, leaf_assignments)
@@ -21,19 +18,17 @@ class TreeGenerator:
             depth = self.__depth_from_branchnodes(b_matrix.shape[0])
 
         decision_features = a_matrix.argmax(axis=0)
-        thresholds = b_matrix * self.data_h.scales[decision_features] + self.data_h.shifts[decision_features]
-        thresholds = thresholds.round(self.data_h.round_limit)
+        thresholds = b_matrix.round(self.data_h.round_limit) * self.data_h.scales[decision_features] + self.data_h.shifts[decision_features]
         leaf_assignments = classes_matrix.argmax(axis=0)
 
         base_context = {
             "depth": depth,
-            "a": a_matrix,
+            "a": a_matrix.round(0),
             "b": b_matrix,
-            "classes": classes_matrix,
+            "classes": classes_matrix.round(0),
         }
 
         return ClassificationTree(base_context, decision_features, thresholds, leaf_assignments)
-
 
     def make_from_SOL_file(self, sol_file, depth=None):
         if depth is None:

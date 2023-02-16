@@ -178,7 +178,7 @@ class XCT_MIP:
 
         self.model.update()
 
-    def optimize(self, warmstart_values=None, time_limit=3600, mem_limit=None, n_threads=None, verbose=False, log_file=""):
+    def optimize(self, warmstart_values=None, time_limit=3600, mem_limit=None, n_threads=None, mip_focus=0, verbose=False, log_file=""):
         assert self.model is not None
 
         # warm start
@@ -204,6 +204,7 @@ class XCT_MIP:
             self.model.params.SoftMemLimit = mem_limit
         self.model.params.NodefileStart = 0.5
         self.model.params.NodefileDir = "nodefiles"
+        self.model.params.MIPFocus = mip_focus
         if n_threads is not None:
             self.model.params.Threads = n_threads
 
@@ -228,7 +229,7 @@ class XCT_MIP:
     def get_base_context(self):
         return {
             "depth": self.depth,
-            "data_h": self.data_h,
+            "data_h_setup": self.data_h.get_setup(),
             "min_in_leaf": self.min_in_leaf,
             "leaf_accuracy": self.leaf_accuracy,
             "maximize_leaf_accuracy": self.maximize_leaf_accuracy,
