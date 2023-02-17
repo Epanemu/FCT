@@ -91,7 +91,7 @@ class ClassificationTree:
         else:
             return leaf_acc, tot_corr
 
-    def visualize(self, path, view=False, data_handler=None):
+    def visualize(self, path, view=False, data_handler=None, show_normalized_thresholds=True):
         data_h = data_handler if data_handler is not None else self.__model_context["data_h"]
         dot = Digraph(comment="example")
 
@@ -101,8 +101,11 @@ class ClassificationTree:
             dot.node(f"bra{node}", f"[{self.__decision_features[node]}]", tooltip="tmp", shape="rect")
 
             parent_i = (node-1) // 2
-            edge_desc = f"< {self.__thresholds[parent_i]:.2f}" if node % 2 == 1 else f"≥ {self.__thresholds[parent_i]:.2f}"
-            # edge_desc = f"< {self.__model_context['b'][parent_i]:.2f}" if node % 2 == 1 else f"≥ {self.__model_context['b'][parent_i]:.2f}"
+            if show_normalized_thresholds:
+                thresh = self.__model_context['b'][parent_i]
+            else:
+                thresh = self.__thresholds[parent_i]
+            edge_desc = f"< {thresh:.2f}" if node % 2 == 1 else f"≥ {thresh:.2f}"
             dot.edge(f"bra{parent_i}", f"bra{node}", edge_desc)
 
         offset = self.__n_branch_nodes - 1
@@ -112,8 +115,11 @@ class ClassificationTree:
             # dot.node(f"dec{node}", f"{data_h.class_mapping[c]}", tooltip="tmp", shape="circle", color="red" if c == 1 else "green", style="filled")
 
             parent_i = (node+offset) // 2
-            edge_desc = f"< {self.__thresholds[parent_i]:.2f}" if node % 2 == 0 else f"≥ {self.__thresholds[parent_i]:.2f}"
-            # edge_desc = f"< {self.__model_context['b'][parent_i]:.2f}" if node % 2 == 0 else f"≥ {self.__model_context['b'][parent_i]:.2f}"
+            if show_normalized_thresholds:
+                thresh = self.__model_context['b'][parent_i]
+            else:
+                thresh = self.__thresholds[parent_i]
+            edge_desc = f"< {thresh:.2f}" if node % 2 == 1 else f"≥ {thresh:.2f}"
             dot.edge(f"bra{parent_i}", f"dec{node}", edge_desc)
 
         dot.format = "pdf"
