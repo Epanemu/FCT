@@ -27,7 +27,7 @@ class DataHandler:
         self.__n_features = self.__X.shape[1]
         self.__generate_stats(self.__X)
 
-    def get_training_data(self, split_seed=0, test_size=0.2, limit=np.inf, reset_stats=True):
+    def get_training_data(self, split_seed=0, test_size=0.2, limit=np.iinfo(np.int32).max, reset_stats=True):
         self.__X_train, self.__X_test, self.__y_train, self.__y_test = train_test_split(self.__X, self.__y, test_size=test_size, random_state=split_seed)
         X, y = self.__X_train[:limit], self.__y_train[:limit]
         self.__X_used = X
