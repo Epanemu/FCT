@@ -60,6 +60,7 @@ class DataHandler:
 
         # if all values were same (min was infinity), we want eps nonzero to prevent non-deterministic splitting
         self.__epsilons[self.__epsilons == np.inf] = 1
+        self.__epsilons = self.__epsilons.round(self.__round_limit)
 
     def normalize(self, X):
         return ((X - self.__shifts) / self.__scales).round(self.__round_limit)
