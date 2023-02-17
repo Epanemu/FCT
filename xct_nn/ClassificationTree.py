@@ -125,6 +125,14 @@ class ClassificationTree:
         dot.format = "pdf"
         dot.render(path, view=view)
 
+    def as_warmstart(self):
+        if self.__model_context is not None \
+           and "a" in self.__model_context \
+           and "b" in self.__model_context:
+            return self.__model_context["a"], self.__model_context["b"]
+        else:
+            raise NotImplementedError("Case when a or b is not already present has not been considered yet.")
+
     @property
     def leaf_totals(self):
         if "leaf_totals" in self.__accuracy_context:
