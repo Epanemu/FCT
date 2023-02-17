@@ -1,14 +1,11 @@
 import numpy as np
-import pandas as pd
 import time
 import os
 import pickle
 import argparse
 
-from sklearn.model_selection import train_test_split
-
 from xct_nn.XCT_MIP import XCT_MIP
-from xct_nn.XCT_MIP import XCT_MIP
+from xct_nn.DataHandler import DataHandler
 
 parser = argparse.ArgumentParser()
 # data parameters
@@ -67,9 +64,9 @@ for depth in range(1, args.depth+1):
         # prep the values (add depth)
         new_a = np.zeros((X_train.shape[1], 2**(depth+1)-1))
         new_b = np.zeros((2**(depth+1)-1,))
-        new_a[:, :(2**depth - 1)] = ctx[0]
+        new_a[:, :(2**depth - 1)] = ctx["a"]
         new_a[0, (2**depth - 1):] = 1
-        new_b[:(2**depth - 1)] = ctx[1]
+        new_b[:(2**depth - 1)] = ctx["b"]
         warmstart_values = new_a, new_b
 
         xct.model.write(f"{logfile_base}_d{depth}.sol")
