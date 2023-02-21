@@ -1,5 +1,8 @@
 import numpy as np
-from graphviz import Digraph
+try:
+    from graphviz import Digraph
+except ImportError:
+    print("Graphviz not available, will fail if attempted to visualize a tree")
 
 class ClassificationTree:
     def __init__(self, model_context, decision_features, thresholds, leaf_assignments):
