@@ -68,10 +68,15 @@ class TreeGenerator:
                 # sklearn uses <=, this implementation uses <
                 vals = train_data[:, sklearn_tree.feature[i]]
                 orig_thresh = sklearn_tree.threshold[i]
-                if (vals == orig_thresh).any():
-                    thresholds[mapped] = np.min(vals[vals > orig_thresh])
+                lower_equal_data = vals <= orig_thresh
+                diff = orig_thresh - vals[lower_equal_data]
+                closest_i = np.argmin(diff)
+                if diff[closest_i] < self.data_h.epsilons[sklearn_tree.feature[i]]:
+                    thresholds[mapped] = vals[lower_equal_data][closest_i] + self.data_h.epsilons[sklearn_tree.feature[i]]
                 else:
                     thresholds[mapped] = orig_thresh
+                # or this, although this leads to more and bigger changes to the thresholds
+                # thresholds[mapped] = np.min(vals[vals > orig_thresh])
             else:
                 depth_remaining = totdepth - self.__depth_from_index(mapped)
                 for _ in range(depth_remaining):
