@@ -113,7 +113,10 @@ class ClassificationTree:
 
         offset = self.__n_branch_nodes - 1
         for node, c in enumerate(self.__leaf_assignments):
-            desc =  f"{self.__accuracy_context['leaf_totals'][node]} ({self.__accuracy_context['leaf_acc'][node]:.2f})"
+            if "bellow_threshold" in self.__accuracy_context and self.__accuracy_context["bellow_threshold"][node]:
+                desc =  f"{self.__accuracy_context['leaf_totals'][node]} [{self.__accuracy_context['leaf_acc'][node]:.2f}]"
+            else:
+                desc =  f"{self.__accuracy_context['leaf_totals'][node]} ({self.__accuracy_context['leaf_acc'][node]:.2f})"
             dot.node(f"dec{node}", desc, tooltip="tmp", shape="circle", color="red" if c == 1 else "green")#, style="filled")
             # dot.node(f"dec{node}", f"{data_h.class_mapping[c]}", tooltip="tmp", shape="circle", color="red" if c == 1 else "green", style="filled")
 
