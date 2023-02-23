@@ -34,7 +34,7 @@ general_config = {
 
 # for gradual increase of depth
 configuration = {
-    "variant": "sklearn_start",
+    "variant": "gradual_increase",
     "base_dir": f"benchmark/gradual/d4_10k_30min_first",
     "shortcut": f"G",
     "script_path": "gradual_depth_increase.py",
