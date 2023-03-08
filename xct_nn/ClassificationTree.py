@@ -134,7 +134,7 @@ class ClassificationTree:
         dot.format = "pdf"
         dot.render(path, view=view)
 
-    def as_warmstart(self):
+    def as_ab_values(self):
         if self.__model_context is not None \
            and "a" in self.__model_context \
            and "b" in self.__model_context:
