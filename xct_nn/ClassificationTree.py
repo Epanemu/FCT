@@ -165,7 +165,7 @@ class ClassificationTree:
     @property
     def using_soft_constraint(self):
         if "bellow_threshold" in self.__accuracy_context:
-            self.__accuracy_context["bellow_threshold"]
+            return self.__accuracy_context["bellow_threshold"]
 
     @property
     def depth(self):
