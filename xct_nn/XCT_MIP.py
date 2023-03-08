@@ -178,16 +178,41 @@ class XCT_MIP:
 
         self.model.update()
 
-    def optimize(self, warmstart_values=None, time_limit=3600, mem_limit=None, n_threads=None, mip_focus=0, verbose=False, log_file=""):
+    def optimize(self, initialize=None, values=None, time_limit=3600, mem_limit=None, n_threads=None, mip_focus=0, verbose=False, log_file=""):
         assert self.model is not None
 
-        # warm start
-        if warmstart_values is not None:
-            if verbose:
-                print("warm starting the model")
-            initial_a, initial_b = warmstart_values
-            self.vars["a"].Start = initial_a
-            self.vars["b"].Start = initial_b
+        # initialize the tree values
+        if initialize is not None:
+            if initialize == "warmstart":
+                if values is None:
+                    raise ValueError("Must provide values if warmstarting")
+                if verbose:
+                    print("Warm-starting the model")
+                initial_a, initial_b = values
+                for i in range(initial_b.shape[0]): # in case I do not wish to warmstart the entire tree
+                    self.vars["a"][:, i].Start = initial_a[:, i]
+                    self.vars["b"][i].Start = initial_b[i]
+            elif initialize == "hint":
+                if values is None:
+                    raise ValueError("Must provide values if hinting")
+                if verbose:
+                    print("Hinting some values of the model")
+                initial_a, initial_b = values
+                for i in range(initial_b.shape[0]):
+                    self.vars["a"][:, i].VarHintVal = initial_a[:, i]
+                    self.vars["b"][i].VarHintVal = initial_b[i]
+            elif initialize == "fix_values":
+                if values is None:
+                    raise ValueError("Must provide values if fixing the upper tree")
+                if verbose:
+                    print("Fixing some decisions in the model")
+                initial_a, initial_b = values
+                for i in range(initial_b.shape[0]):
+                    # can lead to infeasible models if the values have are not numerically stable
+                    self.model.addConstr(self.vars["a"][:, i] == initial_a[:, i].round(0))
+                    self.model.addConstr(self.vars["b"][i] == initial_b[i].round(self.data_h.round_limit))
+            else:
+                raise ValueError("Unsupported value of the `initialize` parameter")
 
         if verbose:
             self.model.update()
