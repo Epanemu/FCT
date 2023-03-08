@@ -50,7 +50,7 @@ class TreeGenerator:
     def __depth_from_index(self, i):
         return np.floor(np.log2(i + 1)).astype(int)
 
-    def make_from_sklearn(self, sklearn_tree, train_data):
+    def make_from_sklearn(self, sklearn_tree, hard_constr, train_data):
         totdepth = sklearn_tree.max_depth
         decision_features = np.zeros((2**totdepth - 1,), dtype=int)
         thresholds = np.zeros((2**totdepth - 1,))
@@ -93,5 +93,8 @@ class TreeGenerator:
             "a": a_matrix,
             "b": thresholds,
             "classes": classes_matrix,
+            "hard_constraint": hard_constr,
+            "max_invalid": None,
+            "leaf_acc_limit": 20,
         }
         return ClassificationTree(base_context, decision_features, self.__thresholds_from_b(thresholds, decision_features), leaf_assignments)
