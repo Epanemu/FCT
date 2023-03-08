@@ -1,3 +1,5 @@
+# direct approach, but due to poor performance no longer maintained to follow the standards of other runscripts
+
 import time
 import os
 import pickle
