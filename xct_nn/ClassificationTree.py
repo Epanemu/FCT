@@ -128,7 +128,7 @@ class ClassificationTree:
                 thresh = self.__model_context['b'][parent_i]
             else:
                 thresh = self.__thresholds[parent_i]
-            edge_desc = f"< {thresh:.2f}" if node % 2 == 1 else f"≥ {thresh:.2f}"
+            edge_desc = f"< {thresh:.2f}" if node % 2 == 0 else f"≥ {thresh:.2f}"
             dot.edge(f"bra{parent_i}", f"dec{node}", edge_desc)
 
         dot.format = "pdf"
