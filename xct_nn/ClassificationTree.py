@@ -72,7 +72,10 @@ class ClassificationTree:
         for i in range(self.__n_decision_nodes):
             leaf_corr[i] = np.sum(tot_corr[leaf_indices == i])
             leaf_tot[i] = np.sum(leaf_indices == i)
-        leaf_acc = leaf_corr/leaf_tot
+        leaf_tot_safe = leaf_tot.copy()
+        leaf_tot_safe[leaf_tot == 0] = 1
+        leaf_acc = leaf_corr/leaf_tot_safe
+        leaf_acc[leaf_tot == 0] = 1 # if no points, the accuracy is 100%
 
         # only if i have this knowledge...
         if "hard_constraint" in self.__model_context:
