@@ -6,11 +6,13 @@ from utils.datasets import DATASETS
 
 general_config = {
     "depth": 4,
-    "train_data_limit": 10_000,
-    "round_limit": 5,
+    "train_data_limit": 5_000,
+    "round_limit": 4,
     "memory_limit": 250,
     "thread_limit": 8,
-    "mip_focus": 0,
+    "time_limit": 4*3600,
+    "mip_focus": 1,
+    "mip_heuristics": 0.8,
     "random_runs": 10,
 }
 
@@ -20,25 +22,26 @@ general_config = {
 #     "base_dir": f"benchmark/direct/d4_10k",
 #     "shortcut": f"D10k",
 #     "script_path": "highest_acc_tester_openml.py",
-#     "time_limit": 4*3600, # 4 hours
+#     "params": [],
 # }
 
 # for sklearn warmstart
 # configuration = {
 #     "variant": "sklearn_start",
-#     "base_dir": f"benchmark/warmstart/d4_10k",
-#     "shortcut": f"W",
+#     "base_dir": f"benchmark/warmstart/d4_10k_hint",
+#     "shortcut": f"Wh",
 #     "script_path": "sklearn_warmstart.py",
-#     "time_limit": 4*3600, # 4 hours
+#     "params": ["-init hint"],
 # }
 
 # for gradual increase of depth
 configuration = {
     "variant": "gradual_increase",
-    "base_dir": f"benchmark/gradual/d4_10k_30min_first",
-    "shortcut": f"G",
+    "base_dir": f"benchmark/gradual/d4_10k_30min_first_fix_hard_round4",
+    "shortcut": f"Gfh",
     "script_path": "gradual_depth_increase.py",
-    "time_limit": 3600 // 2, # 30 minutes (for first, then are doubled)
+    # "params": ["-init hint"],
+    "params": ["-init fix_values -hard"],
 }
 
 # for halving algorithm
@@ -93,7 +96,8 @@ for rand_seed in range(general_config["random_runs"]):
                 "sbatch",
                 "--parsable",
                 f"--out={outfile}",
-                f"--job-name={job_name}"
+                f"--job-name={job_name}",
+                f"--cpus-per-task={general_config['thread_limit']}",
             ]
             result = subprocess.run(precommand + command, stdout=subprocess.PIPE, encoding='ascii')
             # writes job id to stdout that is useful for later
