@@ -2,7 +2,7 @@ import os
 import subprocess
 import pickle
 
-from datasets import DATASETS
+from utils.datasets import DATASETS
 
 general_config = {
     "depth": 4,
