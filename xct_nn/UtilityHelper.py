@@ -115,17 +115,18 @@ def retrieve_information(base_dir, sklearn_warm=False, gradual_depth=None):
         skl_test_leaf_accs = []
     if gradual_depth is not None:
         for depth in range(1, gradual_depth+1):
-            # for i, job in jobs.iterrows():
-            i = 0
-            while i < len(jobs):
-                job = jobs.iloc[i]
+            for i, job in jobs.iterrows():
+            # for the case when not all depths were computed
+            # i = 0
+            # while i < len(jobs):
+            #     job = jobs.iloc[i]
                 ctx_path = job["Path"][:-4] + f"_d{depth}.ctx"
-                import os
-                if not os.path.exists(ctx_path):
-                    print("drop", i)
-                    jobs = jobs.drop([jobs.index[i]])
-                    print(len(jobs))
-                    continue
+                # import os
+                # if not os.path.exists(ctx_path):
+                #     print("drop", i)
+                #     jobs = jobs.drop([jobs.index[i]])
+                #     print(len(jobs))
+                #     continue
 
                 with open(ctx_path, "rb") as f:
                     ctx = pickle.load(f)
@@ -149,7 +150,7 @@ def retrieve_information(base_dir, sklearn_warm=False, gradual_depth=None):
                     test_leaf_accs.append(res[3])
                     soft_constr.append(res[4])
                     empty_leaves.append(res[5])
-                i += 1
+                # i += 1
 
             jobs[f"TrainAcc{depth}"] = train_accs
             jobs[f"TrainLeafAcc{depth}"] = train_leaf_accs
