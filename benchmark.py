@@ -65,12 +65,13 @@ base_command = [
     configuration['script_path'],
     f"-d {general_config['depth']}",
     f"-max {general_config['train_data_limit']}",
-    f"-t {configuration['time_limit']}",
+    f"-t {general_config['time_limit']}",
     f"-m {general_config['memory_limit']}",
     f"-thr {general_config['thread_limit']}",
     f"-r {general_config['round_limit']}",
     f"-focus {general_config['mip_focus']}",
-]
+    f"-focus {general_config['mip_heuristics']}",
+] + configuration["params"]
 
 os.makedirs(configuration["base_dir"], exist_ok=True)
 with open(configuration["base_dir"] + "/config.pickle", "wb") as f:

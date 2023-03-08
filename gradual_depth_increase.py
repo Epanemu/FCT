@@ -30,8 +30,7 @@ parser.add_argument("-t", "--time_limit", type=int, default=1800, help="Total ti
 parser.add_argument("-m", "--memory_limit", type=int, default=None, help="Memory limit for gurobi [GB]")
 parser.add_argument("-thr", "--n_threads", type=int, default=None, help="Number of threads for gurobi to use")
 parser.add_argument("-focus", "--mip_focus", type=int, default=0, help="Value of MIPFocus parameter for Gurobi")
-parser.add_argument("-heur", "--mip_heuristics", type=float, default=0.05, help="Value of Heuristics parameter for Gurobi") # TODO add the use of this
-
+parser.add_argument("-heur", "--mip_heuristics", type=float, default=0.05, help="Value of Heuristics parameter for Gurobi")
 args = parser.parse_args()
 
 with open(args.dataset_path, "rb") as f:
