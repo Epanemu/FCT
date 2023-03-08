@@ -264,7 +264,10 @@ class XCT_MIP:
             "hard_constraint": self.hard_constraint,
             "a": self.vars["a"].X,
             "b": self.vars["b"].X,
-            "classes": self.vars["class_in_leaf"].X
+            "classes": self.vars["class_in_leaf"].X,
+            "objective_bound": self.model.ObjBound if self.model is not None else None,
+            "objective_gap": self.model.MIPGap if self.model is not None else None,
+            "status": self.get_humanlike_status(),
         }
 
     def load_sol(self, sol_file):
