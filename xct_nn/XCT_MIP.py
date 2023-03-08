@@ -178,7 +178,7 @@ class XCT_MIP:
 
         self.model.update()
 
-    def optimize(self, initialize=None, values=None, time_limit=3600, mem_limit=None, n_threads=None, mip_focus=0, verbose=False, log_file=""):
+    def optimize(self, initialize=None, values=None, time_limit=3600, mem_limit=None, n_threads=None, mip_focus=0, mip_heuristics=0.05, verbose=False, log_file=""):
         assert self.model is not None
 
         # initialize the tree values
@@ -230,6 +230,7 @@ class XCT_MIP:
         self.model.params.NodefileStart = 0.5
         self.model.params.NodefileDir = "nodefiles"
         self.model.params.MIPFocus = mip_focus
+        self.model.params.Heuristics = mip_heuristics
         if n_threads is not None:
             self.model.params.Threads = n_threads
 
