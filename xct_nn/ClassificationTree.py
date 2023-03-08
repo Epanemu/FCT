@@ -142,6 +142,12 @@ class ClassificationTree:
         else:
             raise NotImplementedError("Case when a or b is not already present has not been considered yet.")
 
+    def compute_similarity(self, ohter_tree):
+        size = min(self.__decision_features.shape[0], ohter_tree.decision_features.shape[0])
+        same = self.__decision_features[:size] == ohter_tree.decision_features[:size]
+        similarity = 1 - np.abs(self.__model_context["b"][:size] - ohter_tree.as_ab_values()[1][:size])
+        return (similarity * same).sum() / size
+
     @property
     def leaf_totals(self):
         if "leaf_totals" in self.__accuracy_context:
