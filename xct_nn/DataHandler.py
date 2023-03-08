@@ -5,7 +5,7 @@ import pickle
 from sklearn.model_selection import train_test_split
 
 class DataHandler:
-    def __init__(self, dataset_path, round_limit=5):
+    def __init__(self, dataset_path, round_limit=4):
         self.__dataset_path = dataset_path
         with open(dataset_path, "rb") as f:
             X, y, categorical_indicator, attribute_names, dataset_name = pickle.load(f)
@@ -13,8 +13,8 @@ class DataHandler:
         self.__feature_names = attribute_names
         self.__dataset_name = dataset_name
         self.__categorical_indicator = categorical_indicator
-        if round_limit > 5:
-            print("Rounding to more than 5 decimal numbers may lead to inaccuracies in the model.")
+        if round_limit > 4:
+            print("Rounding to more than 4 decimal numbers may lead to inaccuracies in the model.")
             print(f"Checkout https://www.gurobi.com/documentation/10.0/refman/feasibilitytol.html for a potential way to help this")
         self.__round_limit = round_limit
 
