@@ -99,7 +99,7 @@ class ClassificationTree:
 
     def visualize(self, path, view=False, data_handler=None, show_normalized_thresholds=True):
         data_h = data_handler if data_handler is not None else self.__model_context["data_h"]
-        dot = Digraph(comment="example")
+        dot = Digraph(comment="Decision tree")
 
         # for d in range(depth):
         dot.node("bra0", f"[{self.__decision_features[0]}]", tooltip="tmp", shape="rect")
@@ -117,9 +117,9 @@ class ClassificationTree:
         offset = self.__n_branch_nodes - 1
         for node, c in enumerate(self.__leaf_assignments):
             if "bellow_threshold" in self.__accuracy_context and self.__accuracy_context["bellow_threshold"][node]:
-                desc =  f"{self.__accuracy_context['leaf_totals'][node]} [{self.__accuracy_context['leaf_acc'][node]:.2f}]"
+                desc =  f"{self.__accuracy_context['leaf_totals'][node]} [{self.__accuracy_context['leaf_acc'][node]*100:.3g}%]"
             else:
-                desc =  f"{self.__accuracy_context['leaf_totals'][node]} ({self.__accuracy_context['leaf_acc'][node]:.2f})"
+                desc =  f"{self.__accuracy_context['leaf_totals'][node]} ({self.__accuracy_context['leaf_acc'][node]*100:.3g}%)"
             dot.node(f"dec{node}", desc, tooltip="tmp", shape="circle", color="red" if c == 1 else "green")#, style="filled")
             # dot.node(f"dec{node}", f"{data_h.class_mapping[c]}", tooltip="tmp", shape="circle", color="red" if c == 1 else "green", style="filled")
 
