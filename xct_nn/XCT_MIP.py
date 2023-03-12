@@ -190,7 +190,7 @@ class XCT_MIP:
                     print("Warm-starting the model")
                 initial_a, initial_b = values
                 for i in range(initial_b.shape[0]): # in case I do not wish to warmstart the entire tree
-                    self.vars["a"][:, i].Start = initial_a[:, i]
+                    self.vars["a"][:, i].Start = initial_a[:, i].round(0)
                     self.vars["b"][i].Start = initial_b[i]
             elif initialize == "hint":
                 if values is None:
@@ -199,8 +199,10 @@ class XCT_MIP:
                     print("Hinting some values of the model")
                 initial_a, initial_b = values
                 for i in range(initial_b.shape[0]):
-                    self.vars["a"][:, i].VarHintVal = initial_a[:, i]
+                    self.vars["a"][:, i].VarHintVal = initial_a[:, i].round(0)
                     self.vars["b"][i].VarHintVal = initial_b[i]
+                    self.vars["a"][:, i].Start = initial_a[:, i].round(0)
+                    self.vars["b"][i].Start = initial_b[i]
             elif initialize == "fix_values":
                 if values is None:
                     raise ValueError("Must provide values if fixing the upper tree")
@@ -212,7 +214,7 @@ class XCT_MIP:
                     self.model.addConstr(self.vars["a"][:, i] == initial_a[:, i].round(0))
                     self.model.addConstr(self.vars["b"][i] == initial_b[i].round(self.data_h.round_limit))
             else:
-                raise ValueError("Unsupported value of the `initialize` parameter")
+                raise ValueError("Unsupported value of the `initialize` parameter:", initialize)
 
         if verbose:
             self.model.update()
