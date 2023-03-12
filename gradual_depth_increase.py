@@ -39,8 +39,8 @@ with open(args.dataset_path, "rb") as f:
 print(f"Handling dataset {dataset_name} - {args.dataset_type}")
 
 data_handler = DataHandler(args.dataset_path, round_limit=args.round_limit)
-util = UtilityHelper(data_handler)
 X_train, y_train = data_handler.get_training_data(split_seed=args.random_seed, test_size=0.2, limit=args.max_data)
+util = UtilityHelper(data_handler)
 
 logfile_base = args.results_dir + f"/run{args.random_seed}"
 time_limit = args.time_limit / (2**args.depth - 1)

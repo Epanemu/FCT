@@ -7,6 +7,7 @@ from sklearn import tree as skltree
 from xct_nn.XCT_MIP import XCT_MIP
 from xct_nn.DataHandler import DataHandler
 from xct_nn.TreeGenerator import TreeGenerator
+from xct_nn.UtilityHelper import UtilityHelper
 
 parser = argparse.ArgumentParser()
 # data parameters
@@ -41,6 +42,7 @@ print(f"Handling dataset {dataset_name} - {args.dataset_type}")
 
 data_handler = DataHandler(args.dataset_path, round_limit=args.round_limit)
 X_train, y_train = data_handler.get_training_data(split_seed=args.random_seed, test_size=0.2, limit=args.max_data)
+util = UtilityHelper(data_handler)
 
 logfile_base = args.results_dir + f"/run{args.random_seed}"
 time_limit = args.time_limit
