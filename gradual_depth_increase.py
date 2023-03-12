@@ -53,7 +53,7 @@ for depth in range(1, args.depth+1):
 
     print("Optimizing the model...")
     initialize = args.init_type if values is not None else None
-    res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, mip_focus=args.mip_focus, mip_heuristics=mip_heuristics, log_file=f"{logfile_base}_d{depth}.log", initialize=initialize, values=values, verbose=args.verbose)
+    res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, mip_focus=args.mip_focus, mip_heuristics=args.mip_heuristics, log_file=f"{logfile_base}_d{depth}.log", initialize=initialize, values=values, verbose=args.verbose)
 
     time_limit *= 2 # double the time limit after each depth
     status = xct.get_humanlike_status()
@@ -65,7 +65,7 @@ for depth in range(1, args.depth+1):
         ctx["train_leaf_acc"], ctx["train_acc"] = util.get_accuracy_from_ctx(ctx, *data_handler.used_data)
         ctx["test_leaf_acc"], ctx["test_acc"] = util.get_accuracy_from_ctx(ctx, *data_handler.test_data)
         # get these stats from the re-represented tree, since it does not have the numerical issues
-        ctx["n_soft_constrained"] = util.are_soft_constrained(ctx)
+        ctx["n_soft_constrained"] = util.n_soft_constrained(ctx)
         ctx["n_empty_leaves"] = util.n_empty_leaves(ctx)
         problem, diff = util.check_leaf_assignment(xct)
         misassigned = np.abs(diff).sum()/2

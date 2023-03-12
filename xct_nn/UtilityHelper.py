@@ -38,7 +38,7 @@ class UtilityHelper:
 
     def check_leaf_assignment(self, xct_mip):
         tree = self.tree_gen.make_from_context(xct_mip.get_base_context())
-        _ = tree.compute_leaf_accuracy(X, y)
+        _ = tree.compute_leaf_accuracy(self.used_X, self.used_y)
         # checking counts is sufficient for my case
         diff = xct_mip.vars["points_in_leaf"].X.round(0) - tree.leaf_totals
         return any(diff != 0), diff

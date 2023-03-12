@@ -2,6 +2,7 @@ import time
 import os
 import pickle
 import argparse
+import numpy as np
 from sklearn import tree as skltree
 
 from xct_nn.XCT_MIP import XCT_MIP
@@ -62,7 +63,7 @@ xct = XCT_MIP(args.depth, data_handler, hard_constraint=args.hard_constr)
 xct.make_model(X_train, y_train)
 
 print("Optimizing the model...")
-res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, mip_focus=args.mip_focus, mip_heuristics=mip_heuristics, log_file=f"{logfile_base}.log", initialize=args.init_type, values=values, verbose=args.verbose)
+res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, mip_focus=args.mip_focus, mip_heuristics=args.mip_heuristics, log_file=f"{logfile_base}.log", initialize=args.init_type, values=values, verbose=args.verbose)
 
 status = xct.get_humanlike_status()
 
@@ -73,10 +74,10 @@ if res:
     ctx = xct.get_base_context()
     ctx["train_leaf_acc"], ctx["train_acc"] = util.get_accuracy_from_ctx(ctx, *data_handler.used_data)
     ctx["test_leaf_acc"], ctx["test_acc"] = util.get_accuracy_from_ctx(ctx, *data_handler.test_data)
-    ctx["train_leaf_acc_start"], ctx["train_acc_start"] = util.get_accuracy_sklearn(dt_sklearn, args.hard, *data_handler.used_data)
-    ctx["test_leaf_acc_start"], ctx["test_acc_start"] = util.get_accuracy_sklearn(dt_sklearn, args.hard, *data_handler.test_data)
+    ctx["train_leaf_acc_start"], ctx["train_acc_start"] = util.get_accuracy_sklearn(dt_sklearn, args.hard_constr, *data_handler.used_data)
+    ctx["test_leaf_acc_start"], ctx["test_acc_start"] = util.get_accuracy_sklearn(dt_sklearn, args.hard_constr, *data_handler.test_data)
     # get these stats from the re-represented tree, since it does not have the numerical issues
-    ctx["n_soft_constrained"] = util.are_soft_constrained(ctx)
+    ctx["n_soft_constrained"] = util.n_soft_constrained(ctx)
     ctx["n_empty_leaves"] = util.n_empty_leaves(ctx)
     problem, diff = util.check_leaf_assignment(xct)
     misassigned = np.abs(diff).sum()/2
