@@ -70,7 +70,7 @@ base_command = [
     f"-thr {general_config['thread_limit']}",
     f"-r {general_config['round_limit']}",
     f"-focus {general_config['mip_focus']}",
-    f"-focus {general_config['mip_heuristics']}",
+    f"-heur {general_config['mip_heuristics']}",
 ] + configuration["params"]
 
 os.makedirs(configuration["base_dir"], exist_ok=True)
