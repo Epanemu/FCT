@@ -25,30 +25,103 @@ class ClassificationTree:
                 i = i*2 + 2
         return self.__leaf_assignments[i - self.__n_branch_nodes]
 
-    def compute_accuracy(self, X, y, return_computed=True):
-        acc = np.empty(y.shape, dtype=bool)
-        for i, (x, true_class) in enumerate(zip(X, y)):
-            acc[i] = self.predict(x) == true_class
-        if return_computed:
-            return acc.mean()
-        else:
-            return acc
+    def reduce_tree(self):
+        mapping = [0]
+        parents = [-1]
+        l_child = []
+        r_child = []
 
-    def compute_accuracy2(self, X, y, return_computed=True):
-        # significantly faster
-        decisions = X[:, self.__decision_features] < self.__thresholds
-        indices = np.zeros_like(y, dtype=int)
-        selector = np.arange(y.shape[0])
-        for _ in range(self.__model_context["depth"]):
-            correct = decisions[selector, indices]
-            indices[correct] = indices[correct]*2 + 1
-            indices[~correct] = indices[~correct]*2 + 2
+        q = [0]
+        while q:
+            i = q.pop(0)
+            is_leaf = mapping[i] >= self.__model_context["b"].shape[0]
+            if not is_leaf:
+                orig_t = self.__model_context["b"][mapping[i]]
+                while orig_t == 0:
+                    mapping[i] = mapping[i]*2 + 2
+                    is_leaf = mapping[i] >= self.__model_context["b"].shape[0]
+                    if is_leaf:
+                        break
+                    orig_t = self.__model_context["b"][mapping[i]]
+            if is_leaf:
+                l_child.append(-1)
+                r_child.append(-1)
+            else:
+                l_ch = len(parents)
+                r_ch = l_ch + 1
+                parents += [i, i]
+                mapping += [mapping[i]*2 + 1, mapping[i]*2 + 2]
+                q += [l_ch, r_ch]
+                l_child.append(l_ch)
+                r_child.append(r_ch)
 
-        acc = self.__leaf_assignments[indices - self.__n_branch_nodes] == y
-        if return_computed:
-            return acc.mean()
-        else:
-            return acc
+        mapping = [[m] for m in mapping]
+
+        # check for 2 same class children leafs
+        pruned = []
+        change = True
+        while change:
+            change = False
+            q = [0]
+            while q:
+                i = q.pop(0)
+                if l_child[i] != -1 and r_child[i] != -1 and l_child[l_child[i]] == -1 and l_child[r_child[i]] == -1:
+                    lmap = mapping[l_child[i]][0] - self.__n_decision_nodes + 1
+                    rmap = mapping[r_child[i]][0] - self.__n_decision_nodes + 1
+                    if self.__leaf_assignments[rmap] == self.__leaf_assignments[lmap]:
+                        mapping[i] = mapping[l_child[i]] + mapping[r_child[i]]
+                        pruned += [l_child[i], r_child[i]]
+                        l_child[i] = -1
+                        r_child[i] = -1
+                        change = True
+                        break
+
+                if l_child[i] != -1:
+                    q.append(l_child[i])
+                if r_child[i] != -1:
+                    q.append(r_child[i])
+        self.__reduced = (mapping, parents, l_child, r_child, pruned)
+
+        # JE TO SLOZITEJSI
+        # ted na to nemam, ale v principu jde o to, invalidovat jen levou vetev, v pravy se jeste muze neco dit...
+        # leaf neni jasnej, lepsi bude udelat mapovani, v pripade thresh = 0 jed doprava dokud thresh neni > 0 a pak nastav mapovani
+        # jakmile dojdes na leaf, tak ho proste nastav
+        # mej tam leaf priznak pouze, strukturu treba jako ma sklearn, akorat i s parent vektorem
+        # pak se pro vsechny co maj rozhodnuti na 2 leaves koukej jestli nejsou obe classy stejny. Pokud ano, merge. Pak pripadne pridej dalsi
+        # uzel jestli vznikl
+
+        # return np.any(~self.__used_dec)
+
+    def visualize_reduced(self, path, view=False, data_handler=None, show_normalized_thresholds=True):
+        data_h = data_handler if data_handler is not None else self.__model_context["data_h"]
+        dot = Digraph(comment="Decision tree")
+
+        (mapping, parents, l_child, r_child, pruned) = self.__reduced
+
+        for i, mapped in enumerate(mapping):
+            if i in pruned:
+                continue
+            if l_child[i] != -1:
+                if show_normalized_thresholds:
+                    thresh = self.__model_context['b'][mapped[0]] # decisions can be mapped to a single value only
+                else:
+                    thresh = self.__thresholds[mapped[0]]
+                dot.node(f"bra{i}", f"[{self.__decision_features[mapped[0]]}] ? {thresh:.5g}", tooltip="tmp", shape="rect")
+                if i > 0:
+                    edge_desc = f"<" if i == l_child[parents[i]] else f"≥"
+                    dot.edge(f"bra{parents[i]}", f"bra{i}", edge_desc)
+            else:
+                points_total = sum(self.__accuracy_context['leaf_totals'][m - self.__n_decision_nodes + 1] for m in mapped)
+                correct_total = sum(self.__accuracy_context['leaf_corr'][m - self.__n_decision_nodes + 1] for m in mapped)
+                acc = correct_total / points_total if points_total > 0 else 1
+                desc =  f"{points_total} ({acc*100:.3g}%)"
+                c = self.__leaf_assignments[mapped[0] - self.__n_decision_nodes + 1]
+                dot.node(f"dec{i}", desc, tooltip="tmp", shape="circle", color="red" if c == 1 else "green")
+                edge_desc = f"<" if i == l_child[parents[i]] else f"≥"
+                dot.edge(f"bra{parents[i]}", f"dec{i}", edge_desc)
+
+        dot.format = "pdf"
+        dot.render(path, view=view)
 
     def compute_leaf_accuracy(self, X, y, return_computed=True):
         # computes everything at once...
@@ -90,6 +163,7 @@ class ClassificationTree:
         # no points in leaf, the accuracy is not influenced
         # leaf_acc[np.isnan(leaf_acc)] = 1 # it is better to know which are nans
         self.__accuracy_context["total_corr"] = tot_corr
+        self.__accuracy_context["leaf_corr"] = leaf_corr
         self.__accuracy_context["leaf_acc"] = leaf_acc
         self.__accuracy_context["leaf_totals"] = leaf_tot
         if return_computed:

@@ -19,7 +19,7 @@ class UtilityHelper:
         tree.reduce_tree()
         tree.visualize_reduced(path+"_red", view, self.data_h)
 
-    def visualize_sklearn(self, skltree, hard_constr, path, view=False):
+    def visualize_sklearn(self, skltree, path, hard_constr, view=False):
         # i use own implementation of tree to compute the acc, should be the same to sklearn methods
         tree = self.tree_gen.make_from_sklearn(skltree.tree_, hard_constr, self.norm_X)
         _ = tree.compute_leaf_accuracy(self.used_X, self.used_y)
