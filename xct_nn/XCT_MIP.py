@@ -1,4 +1,8 @@
-import gurobipy as gb
+
+try:
+    import gurobipy as gb
+except ImportError:
+    print("Gurobi is not available, related functions will fail.")
 import numpy as np
 
 class XCT_MIP:
