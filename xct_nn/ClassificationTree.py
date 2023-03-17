@@ -26,6 +26,9 @@ class ClassificationTree:
         return self.__leaf_assignments[i - self.__n_branch_nodes]
 
     def reduce_tree(self):
+        # reduces the complete binary tree to an equivalent representation with less leaf nodes
+        # by removing decisions that lead to no splitting of values (i. e. threshold is out of relevant bounds)
+        # and by combining neighbouring leafs that lead to the same class into a single leaf
         mapping = [0]
         parents = [-1]
         l_child = []
@@ -81,16 +84,6 @@ class ClassificationTree:
                 if r_child[i] != -1:
                     q.append(r_child[i])
         self.__reduced = (mapping, parents, l_child, r_child, pruned)
-
-        # JE TO SLOZITEJSI
-        # ted na to nemam, ale v principu jde o to, invalidovat jen levou vetev, v pravy se jeste muze neco dit...
-        # leaf neni jasnej, lepsi bude udelat mapovani, v pripade thresh = 0 jed doprava dokud thresh neni > 0 a pak nastav mapovani
-        # jakmile dojdes na leaf, tak ho proste nastav
-        # mej tam leaf priznak pouze, strukturu treba jako ma sklearn, akorat i s parent vektorem
-        # pak se pro vsechny co maj rozhodnuti na 2 leaves koukej jestli nejsou obe classy stejny. Pokud ano, merge. Pak pripadne pridej dalsi
-        # uzel jestli vznikl
-
-        # return np.any(~self.__used_dec)
 
     def visualize_reduced(self, path, view=False, data_handler=None, show_normalized_thresholds=True):
         data_h = data_handler if data_handler is not None else self.__model_context["data_h"]
