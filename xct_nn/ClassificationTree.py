@@ -29,7 +29,7 @@ class ClassificationTree:
         # reduces the complete binary tree to an equivalent representation with less leaf nodes
         # by removing decisions that lead to no splitting of values (i. e. threshold is out of relevant bounds)
         # and by combining neighbouring leafs that lead to the same class into a single leaf
-        mapping = [0]
+        mapping1to1 = [0]
         parents = [-1]
         l_child = []
         r_child = []
@@ -37,15 +37,15 @@ class ClassificationTree:
         q = [0]
         while q:
             i = q.pop(0)
-            is_leaf = mapping[i] >= self.__model_context["b"].shape[0]
+            is_leaf = mapping1to1[i] >= self.__model_context["b"].shape[0]
             if not is_leaf:
-                orig_t = self.__model_context["b"][mapping[i]]
+                orig_t = self.__model_context["b"][mapping1to1[i]]
                 while orig_t == 0:
-                    mapping[i] = mapping[i]*2 + 2
-                    is_leaf = mapping[i] >= self.__model_context["b"].shape[0]
+                    mapping1to1[i] = mapping1to1[i]*2 + 2
+                    is_leaf = mapping1to1[i] >= self.__model_context["b"].shape[0]
                     if is_leaf:
                         break
-                    orig_t = self.__model_context["b"][mapping[i]]
+                    orig_t = self.__model_context["b"][mapping1to1[i]]
             if is_leaf:
                 l_child.append(-1)
                 r_child.append(-1)
@@ -53,12 +53,12 @@ class ClassificationTree:
                 l_ch = len(parents)
                 r_ch = l_ch + 1
                 parents += [i, i]
-                mapping += [mapping[i]*2 + 1, mapping[i]*2 + 2]
+                mapping1to1 += [mapping1to1[i]*2 + 1, mapping1to1[i]*2 + 2]
                 q += [l_ch, r_ch]
                 l_child.append(l_ch)
                 r_child.append(r_ch)
 
-        mapping = [[m] for m in mapping]
+        mapping1toN = [[m] for m in mapping1to1]
 
         # check for 2 same class children leafs
         pruned = []
@@ -69,10 +69,10 @@ class ClassificationTree:
             while q:
                 i = q.pop(0)
                 if l_child[i] != -1 and r_child[i] != -1 and l_child[l_child[i]] == -1 and l_child[r_child[i]] == -1:
-                    lmap = mapping[l_child[i]][0] - self.__n_decision_nodes + 1
-                    rmap = mapping[r_child[i]][0] - self.__n_decision_nodes + 1
+                    lmap = mapping1toN[l_child[i]][0] - self.__n_decision_nodes + 1
+                    rmap = mapping1toN[r_child[i]][0] - self.__n_decision_nodes + 1
                     if self.__leaf_assignments[rmap] == self.__leaf_assignments[lmap]:
-                        mapping[i] = mapping[l_child[i]] + mapping[r_child[i]]
+                        mapping1toN[i] = mapping1toN[l_child[i]] + mapping1toN[r_child[i]]
                         pruned += [l_child[i], r_child[i]]
                         l_child[i] = -1
                         r_child[i] = -1
@@ -83,7 +83,7 @@ class ClassificationTree:
                     q.append(l_child[i])
                 if r_child[i] != -1:
                     q.append(r_child[i])
-        self.__reduced = (mapping, parents, l_child, r_child, pruned)
+        self.__reduced = (mapping1toN, parents, l_child, r_child, pruned)
 
     def visualize_reduced(self, path, view=False, data_handler=None, show_normalized_thresholds=True):
         data_h = data_handler if data_handler is not None else self.__model_context["data_h"]
