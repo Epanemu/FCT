@@ -50,7 +50,7 @@ class TreeGenerator:
     def __depth_from_index(self, i):
         return np.floor(np.log2(i + 1)).astype(int)
 
-    def make_from_sklearn(self, sklearn_tree, hard_constr, train_data, normalized_thresholds=True):
+    def make_from_sklearn(self, sklearn_tree, soft_limit, train_data, normalized_thresholds=True):
         epsilons = self.data_h.epsilons
         if not normalized_thresholds:
             epsilons = self.data_h.unnormalize(epsilons)
@@ -100,8 +100,8 @@ class TreeGenerator:
             "a": a_matrix,
             "b": thresholds,
             "classes": classes_matrix,
-            "hard_constraint": hard_constr,
+            "hard_constraint": soft_limit>0,
             "max_invalid": None,
-            "leaf_acc_limit": 20,
+            "leaf_acc_limit": soft_limit,
         }
         return ClassificationTree(base_context, decision_features, self.__thresholds_from_b(thresholds, decision_features), leaf_assignments)

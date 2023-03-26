@@ -81,7 +81,7 @@ class XCT_Extended:
                 self.__models_in_leaves[leaf_i] = xgboost
                 self.__params_in_leaves[leaf_i] = best_params
 
-    def compute_accuracy(self, X, y):
+    def compute_accuracy(self, X, y, soft_limit=0):
         # assigned = np.empty_like(y, dtype=int)
         correct = np.empty_like(y, dtype=bool)
         X_reduced = self.__data_h.unnormalize(self.__data_h.normalize(X))
@@ -91,7 +91,7 @@ class XCT_Extended:
                 correct[indices] = y[indices] == self.__models_in_leaves[leaf_i].predict(X[indices])
             else:
                 correct[indices] = y[indices] == pred
-        leaf_acc, _ = self.__xct.compute_leaf_accuracy_reduced(X, y)
+        leaf_acc, _ = self.__xct.compute_leaf_accuracy_reduced(X, y, soft_limit=soft_limit)
         return leaf_acc, correct.mean()
 
     def get_context(self):

@@ -55,7 +55,7 @@ with open(f"{logfile_base}_sklearn.pickle", "wb") as f:
     pickle.dump(dt_sklearn, f)
 
 tree_gen = TreeGenerator(data_handler)
-tree = tree_gen.make_from_sklearn(dt_sklearn.tree_, args.hard_constr, X_train)
+tree = tree_gen.make_from_sklearn(dt_sklearn.tree_, soft_limit=20, train_data=X_train)
 values = tree.as_ab_values()
 
 print("Creating the MIP model...")
@@ -72,13 +72,6 @@ if res:
     print(f"Found a solution with {acc*100} leaf accuracy - {status}")
 
     ctx = xct.get_base_context()
-    ctx["train_leaf_acc"], ctx["train_acc"] = util.get_accuracy_from_ctx(ctx, *data_handler.used_data)
-    ctx["test_leaf_acc"], ctx["test_acc"] = util.get_accuracy_from_ctx(ctx, *data_handler.test_data)
-    ctx["train_leaf_acc_start"], ctx["train_acc_start"] = util.get_accuracy_sklearn(dt_sklearn, args.hard_constr, *data_handler.used_data)
-    ctx["test_leaf_acc_start"], ctx["test_acc_start"] = util.get_accuracy_sklearn(dt_sklearn, args.hard_constr, *data_handler.test_data)
-    # get these stats from the re-represented tree, since it does not have the numerical issues
-    ctx["n_soft_constrained"] = util.n_soft_constrained(ctx)
-    ctx["n_empty_leaves"] = util.n_empty_leaves(ctx)
     problem, diff = util.check_leaf_assignment(xct)
     misassigned = np.abs(diff).sum()/2
     ctx["n_misassigned"] = misassigned

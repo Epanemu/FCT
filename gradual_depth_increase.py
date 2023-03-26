@@ -62,11 +62,6 @@ for depth in range(1, args.depth+1):
         acc = xct.model.getObjective().getValue()
 
         ctx = xct.get_base_context()
-        ctx["train_leaf_acc"], ctx["train_acc"] = util.get_accuracy_from_ctx(ctx, *data_handler.used_data)
-        ctx["test_leaf_acc"], ctx["test_acc"] = util.get_accuracy_from_ctx(ctx, *data_handler.test_data)
-        # get these stats from the re-represented tree, since it does not have the numerical issues
-        ctx["n_soft_constrained"] = util.n_soft_constrained(ctx)
-        ctx["n_empty_leaves"] = util.n_empty_leaves(ctx)
         problem, diff = util.check_leaf_assignment(xct)
         misassigned = np.abs(diff).sum()/2
         ctx["n_misassigned"] = misassigned

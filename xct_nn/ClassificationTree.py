@@ -33,7 +33,7 @@ class ClassificationTree:
         X, y = data_handler.used_data
         X = data_handler.unnormalize(data_handler.normalize(X))
         # in order to know what leafs are unused
-        self.compute_leaf_accuracy(X, y)
+        self.compute_leaf_accuracy(X, y) # only need the numbers of assigned points
         leaf_tots = self.__accuracy_context['leaf_totals']
 
         mapping1to1 = [0]
@@ -136,14 +136,16 @@ class ClassificationTree:
                     edge_desc = f"<" if i == l_child[parents[i]] else f"≥"
                     dot.edge(f"bra{parents[i]}", f"bra{i}", edge_desc)
             else:
+                bellow_thresh = False
                 if "reduced_leaf_acc" in self.__accuracy_context and i in self.__accuracy_context["reduced_leaf_acc"]:
                     acc = self.__accuracy_context["reduced_leaf_acc"][i]
                     points_total = self.__accuracy_context["reduced_leaf_tot"][i]
+                    bellow_thresh = self.__accuracy_context["reduced_bellow_threshold"]
                 else:
                     points_total = sum(self.__accuracy_context['leaf_totals'][m - self.__n_decision_nodes + 1] for m in mapped)
                     correct_total = sum(self.__accuracy_context['leaf_corr'][m - self.__n_decision_nodes + 1] for m in mapped)
                     acc = correct_total / points_total if points_total > 0 else 1
-                desc =  f"{points_total} ({acc*100:.3g}%)"
+                desc =  f"{points_total} [{acc*100:.3g}%]" if bellow_thresh else f"{points_total} ({acc*100:.3g}%)"
                 c = self.__leaf_assignments[mapped[0] - self.__n_decision_nodes + 1]
                 dot.node(f"dec{i}", desc, tooltip="tmp", shape="circle", color="red" if c == 1 else "green")
                 edge_desc = f"<" if i == l_child[parents[i]] else f"≥"
@@ -152,7 +154,7 @@ class ClassificationTree:
         dot.format = "pdf"
         dot.render(path, view=view)
 
-    def compute_leaf_accuracy_reduced(self, X, y):
+    def compute_leaf_accuracy_reduced(self, X, y, soft_limit=0):
         (mapping, parents, l_child, r_child, pruned) = self.__reduced
 
         correct = [[] for _ in range(len(mapping))]
@@ -169,18 +171,25 @@ class ClassificationTree:
 
         leaf_accs = {}
         leaf_tots = {}
+        bellow_thresh = {}
         total = []
         for i, corr in enumerate(correct):
             if corr:
                 leaf_tots[i] = len(corr)
                 leaf_accs[i] = np.array(corr).mean()
-                if "hard_constraint" in self.__model_context and not self.__model_context["hard_constraint"]:
-                    if leaf_tots[i] <= self.__model_context["leaf_acc_limit"]:
+                bellow_thresh[i] = False
+                if soft_limit > 0:
+                    if leaf_tots[i] <= soft_limit:
+                        bellow_thresh[i] = True
                         misclas = leaf_tots[i] - sum(corr)
-                        leaf_accs[i] = 1 - (misclas / self.__model_context["leaf_acc_limit"])
+                        if self.__model_context["max_invalid"] is not None:
+                            leaf_accs[i] = misclas <= self.__model_context["max_invalid"]
+                        else:
+                            leaf_accs[i] = 1 - (misclas / soft_limit)
             total += corr
         self.__accuracy_context["reduced_leaf_acc"] = leaf_accs
         self.__accuracy_context["reduced_leaf_tot"] = leaf_tots
+        self.__accuracy_context["reduced_bellow_threshold"] = bellow_thresh
         return min(leaf_accs.values()), np.array(total).mean()
 
 
@@ -205,7 +214,7 @@ class ClassificationTree:
                 data_ref.append((i, ind, self.__leaf_assignments[mapping[i][0] - self.__n_decision_nodes + 1]))
         return data_ref
 
-    def compute_leaf_accuracy(self, X, y, return_computed=True):
+    def compute_leaf_accuracy(self, X, y, soft_limit=0):
         # computes everything at once...
         decisions = X[:, self.__decision_features] < self.__thresholds
         indices = np.zeros_like(y, dtype=int)
@@ -232,26 +241,22 @@ class ClassificationTree:
         leaf_acc = leaf_corr/leaf_tot_safe
         leaf_acc[leaf_tot == 0] = 1 # if no points, the accuracy is 100%
 
-        # only if i have this knowledge...
-        if "hard_constraint" in self.__model_context:
-            if not self.__model_context["hard_constraint"]:
-                bellow_thresh = leaf_tot <= self.__model_context["leaf_acc_limit"]
-                misclas = leaf_tot[bellow_thresh] - leaf_corr[bellow_thresh]
-                if self.__model_context["max_invalid"] is not None:
-                    leaf_acc[bellow_thresh] = misclas <= self.__model_context["max_invalid"]
-                else:
-                    leaf_acc[bellow_thresh] = 1 - (misclas / self.__model_context["leaf_acc_limit"])
-                self.__accuracy_context["bellow_threshold"] = bellow_thresh
+        if soft_limit > 0:
+            bellow_thresh = leaf_tot <= soft_limit
+            misclas = leaf_tot[bellow_thresh] - leaf_corr[bellow_thresh]
+            if self.__model_context["max_invalid"] is not None:
+                leaf_acc[bellow_thresh] = misclas <= self.__model_context["max_invalid"]
+            else:
+                leaf_acc[bellow_thresh] = 1 - (misclas / soft_limit)
+            self.__accuracy_context["bellow_threshold"] = bellow_thresh
         # no points in leaf, the accuracy is not influenced
         # leaf_acc[np.isnan(leaf_acc)] = 1 # it is better to know which are nans
         self.__accuracy_context["total_corr"] = tot_corr
         self.__accuracy_context["leaf_corr"] = leaf_corr
         self.__accuracy_context["leaf_acc"] = leaf_acc
         self.__accuracy_context["leaf_totals"] = leaf_tot
-        if return_computed:
-            return np.nanmin(leaf_acc), tot_corr.mean()
-        else:
-            return leaf_acc, tot_corr
+
+        return np.nanmin(leaf_acc), tot_corr.mean()
 
     def visualize(self, path, view=False, data_handler=None, show_normalized_thresholds=True):
         dot = Digraph(comment="Decision tree")
