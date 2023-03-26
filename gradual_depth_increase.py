@@ -72,15 +72,7 @@ for depth in range(1, args.depth+1):
         with open(f"{logfile_base}_d{depth}.ctx", "wb") as f:
             pickle.dump(ctx, f)
 
-        # prep the values (add depth)
-        # new_a = np.zeros((X_train.shape[1], 2**(depth+1)-1))
-        # new_b = np.zeros((2**(depth+1)-1,))
-        # new_a[:, :(2**depth - 1)] = ctx["a"]
-        # new_a[0, (2**depth - 1):] = 1
-        # new_b[:(2**depth - 1)] = ctx["b"]
-        # values = new_a, new_b
-
-        # adding depth is would not work with fixing the upper levels and does not help much in other cases
+        # adding depth would not work with fixing the upper levels and does not help much in other cases
         values = ctx["a"], ctx["b"]
 
         xct.model.write(f"{logfile_base}_d{depth}.sol")
