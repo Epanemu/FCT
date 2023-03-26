@@ -29,11 +29,13 @@ class UtilityHelper:
 
     def get_accuracy_from_ctx(self, ctx, X, y):
         tree = self.tree_gen.make_from_context(ctx)
+        X = self.data_h.unnormalize(self.data_h.normalize(X))
         return tree.compute_leaf_accuracy(X, y)
 
     def get_accuracy_sklearn(self, skltree, hard_constr, X, y):
         # i use own implementation of tree to compute the acc, should be the same to sklearn methods
         tree = self.tree_gen.make_from_sklearn(skltree.tree_, hard_constr, self.norm_X)
+        X = self.data_h.unnormalize(self.data_h.normalize(X))
         return tree.compute_leaf_accuracy(X, y)
 
     def check_leaf_assignment(self, xct_mip):
