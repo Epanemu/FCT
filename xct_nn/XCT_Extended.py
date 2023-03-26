@@ -40,14 +40,17 @@ class XCT_Extended:
             self.__data_h = data_h
             self.__params_in_leaves = context["leaf_params"]
 
-            self.__models_in_leaves = {}
-            X, y = data_h.train_data # USE ALL TRAINING DATA HERE
-            X_reduced = data_h.unnormalize(data_h.normalize(X)) # performs better with true data
-            for leaf_i, indices, pred in classification_tree.get_leafs_with_data(X_reduced):
-                if leaf_i in self.__params_in_leaves:
-                    xgboost = XGBClassifier(random_state=dh_ctx["split_seed"], **self.__params_in_leaves[leaf_i])
-                    xgboost.fit(X[indices], y[indices])
-                    self.__models_in_leaves[leaf_i] = xgboost
+            if "leaf_models" in context:
+                self.__models_in_leaves = context["leaf_models"]
+            else:
+                self.__models_in_leaves = {}
+                X, y = data_h.train_data # USE ALL TRAINING DATA HERE
+                X_reduced = data_h.unnormalize(data_h.normalize(X)) # performs better with true data
+                for leaf_i, indices, pred in classification_tree.get_leafs_with_data(X_reduced):
+                    if leaf_i in self.__params_in_leaves:
+                        xgboost = XGBClassifier(random_state=dh_ctx["split_seed"], **self.__params_in_leaves[leaf_i])
+                        xgboost.fit(X[indices], y[indices])
+                        self.__models_in_leaves[leaf_i] = xgboost
             return
 
         classification_tree.reduce_tree(data_handler)
@@ -98,7 +101,8 @@ class XCT_Extended:
         return {
             "classification_tree": self.__xct,
             "data_h_setup": self.__data_h.get_setup(),
-            "leaf_params": self.__params_in_leaves[leaf_i],
+            "leaf_params": self.__params_in_leaves,
+            "leaf_models": self.__models_in_leaves,
         }
 
     @staticmethod
