@@ -13,13 +13,18 @@ class UtilityHelper:
         self.used_X = data_handler.unnormalize(self.norm_X) # important because of rounding down
         self.tree_gen = TreeGenerator(data_handler)
 
-    def visualize_from_ctx(self, ctx, path, view=False):
+    def visualize_from_ctx(self, ctx, path, view=False, visualize_test=False):
         tree = self.tree_gen.make_from_context(ctx)
         soft_limit = ctx["leaf_acc_limit"] if not ctx["hard_constraint"] else 0
         _ = tree.compute_leaf_accuracy(self.used_X, self.used_y, soft_limit=soft_limit)
         tree.visualize(path, data_handler=self.data_h, view=view)
         tree.reduce_tree(self.data_h)
         tree.visualize_reduced(path+"_red", view, self.data_h)
+        if visualize_test:
+            X, y = self.data_h.test_data
+            X = self.data_h.unnormalize(self.data_h.normalize(X))
+            _ = tree.compute_leaf_accuracy_reduced(X, y, soft_limit=soft_limit)
+            tree.visualize_reduced(path+"_red_test", view, self.data_h)
 
     def visualize_sklearn(self, skltree, path, soft_limit=0, view=False):
         # i use own implementation of tree to compute the acc, should be the same to sklearn methods
