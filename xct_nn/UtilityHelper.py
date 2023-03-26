@@ -16,7 +16,7 @@ class UtilityHelper:
         tree = self.tree_gen.make_from_context(ctx)
         _ = tree.compute_leaf_accuracy(self.used_X, self.used_y)
         tree.visualize(path, data_handler=self.data_h, view=view)
-        tree.reduce_tree()
+        tree.reduce_tree(self.data_h)
         tree.visualize_reduced(path+"_red", view, self.data_h)
 
     def visualize_sklearn(self, skltree, path, hard_constr, view=False):
@@ -24,7 +24,7 @@ class UtilityHelper:
         tree = self.tree_gen.make_from_sklearn(skltree.tree_, hard_constr, self.norm_X)
         _ = tree.compute_leaf_accuracy(self.used_X, self.used_y)
         tree.visualize(path, data_handler=self.data_h, view=view)
-        tree.reduce_tree()
+        tree.reduce_tree(self.data_h)
         tree.visualize_reduced(path+"_red", view, self.data_h)
 
     def get_accuracy_from_ctx(self, ctx, X, y):

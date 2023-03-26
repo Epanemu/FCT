@@ -25,10 +25,17 @@ class ClassificationTree:
                 i = i*2 + 2
         return self.__leaf_assignments[i - self.__n_branch_nodes]
 
-    def reduce_tree(self):
+    def reduce_tree(self, data_handler):
         # reduces the complete binary tree to an equivalent representation with less leaf nodes
         # by removing decisions that lead to no splitting of values (i. e. threshold is out of relevant bounds)
         # and by combining neighbouring leafs that lead to the same class into a single leaf
+        # also remove leafs without any corresponding points in the training set
+        X, y = data_handler.used_data
+        X = data_handler.unnormalize(data_handler.normalize(X))
+        # in order to know what leafs are unused
+        self.compute_leaf_accuracy(X, y)
+        leaf_tots = self.__accuracy_context['leaf_totals']
+
         mapping1to1 = [0]
         parents = [-1]
         l_child = []
@@ -78,6 +85,32 @@ class ClassificationTree:
                         r_child[i] = -1
                         change = True
                         break
+                # check if one of children is not empty
+                if l_child[i] != -1 and l_child[l_child[i]] == -1:
+                    l_points = sum(leaf_tots[m - self.__n_decision_nodes + 1] for m in mapping1toN[l_child[i]])
+                    if l_points == 0:
+                        mapping1toN[i] = mapping1toN[r_child[i]] # map to the other node
+                        pruned += [l_child[i], r_child[i]]
+                        l_child[i] = l_child[r_child[i]]
+                        r_child[i] = r_child[r_child[i]]
+                        if l_child[i] >= 0: # if the children are decision nodes
+                            parents[l_child[i]] = i
+                            parents[r_child[i]] = i
+                        change = True
+                        break
+                if r_child[i] != -1 and l_child[r_child[i]] == -1:
+                    r_points = sum(leaf_tots[m - self.__n_decision_nodes + 1] for m in mapping1toN[r_child[i]])
+                    if r_points == 0:
+                        mapping1toN[i] = mapping1toN[l_child[i]] # map to the other node
+                        pruned += [r_child[i], l_child[i]]
+                        r_child[i] = r_child[l_child[i]]
+                        l_child[i] = l_child[l_child[i]]
+                        if l_child[i] >= 0: # if the children are decision nodes
+                            parents[l_child[i]] = i
+                            parents[r_child[i]] = i
+                        change = True
+                        break
+
 
                 if l_child[i] != -1:
                     q.append(l_child[i])
@@ -86,7 +119,6 @@ class ClassificationTree:
         self.__reduced = (mapping1toN, parents, l_child, r_child, pruned)
 
     def visualize_reduced(self, path, view=False, data_handler=None, show_normalized_thresholds=True):
-        data_h = data_handler if data_handler is not None else self.__model_context["data_h"]
         dot = Digraph(comment="Decision tree")
 
         (mapping, parents, l_child, r_child, pruned) = self.__reduced
@@ -104,9 +136,13 @@ class ClassificationTree:
                     edge_desc = f"<" if i == l_child[parents[i]] else f"≥"
                     dot.edge(f"bra{parents[i]}", f"bra{i}", edge_desc)
             else:
-                points_total = sum(self.__accuracy_context['leaf_totals'][m - self.__n_decision_nodes + 1] for m in mapped)
-                correct_total = sum(self.__accuracy_context['leaf_corr'][m - self.__n_decision_nodes + 1] for m in mapped)
-                acc = correct_total / points_total if points_total > 0 else 1
+                if "reduced_leaf_acc" in self.__accuracy_context and i in self.__accuracy_context["reduced_leaf_acc"]:
+                    acc = self.__accuracy_context["reduced_leaf_acc"][i]
+                    points_total = self.__accuracy_context["reduced_leaf_tot"][i]
+                else:
+                    points_total = sum(self.__accuracy_context['leaf_totals'][m - self.__n_decision_nodes + 1] for m in mapped)
+                    correct_total = sum(self.__accuracy_context['leaf_corr'][m - self.__n_decision_nodes + 1] for m in mapped)
+                    acc = correct_total / points_total if points_total > 0 else 1
                 desc =  f"{points_total} ({acc*100:.3g}%)"
                 c = self.__leaf_assignments[mapped[0] - self.__n_decision_nodes + 1]
                 dot.node(f"dec{i}", desc, tooltip="tmp", shape="circle", color="red" if c == 1 else "green")
@@ -115,6 +151,59 @@ class ClassificationTree:
 
         dot.format = "pdf"
         dot.render(path, view=view)
+
+    def compute_leaf_accuracy_reduced(self, X, y):
+        (mapping, parents, l_child, r_child, pruned) = self.__reduced
+
+        correct = [[] for _ in range(len(mapping))]
+
+        for i in range(y.shape[0]):
+            j = 0
+            while l_child[j] > 0:
+                node = mapping[j][0]
+                if X[i][self.__decision_features[node]] < self.__thresholds[node]:
+                    j = l_child[j]
+                else:
+                    j = r_child[j]
+            correct[j].append(y[i] == self.__leaf_assignments[mapping[j][0] - self.__n_decision_nodes + 1])
+
+        leaf_accs = {}
+        leaf_tots = {}
+        total = []
+        for i, corr in enumerate(correct):
+            if corr:
+                leaf_tots[i] = len(corr)
+                leaf_accs[i] = np.array(corr).mean()
+                if "hard_constraint" in self.__model_context and not self.__model_context["hard_constraint"]:
+                    if leaf_tots[i] <= self.__model_context["leaf_acc_limit"]:
+                        misclas = leaf_tots[i] - sum(corr)
+                        leaf_accs[i] = 1 - (misclas / self.__model_context["leaf_acc_limit"])
+            total += corr
+        self.__accuracy_context["reduced_leaf_acc"] = leaf_accs
+        self.__accuracy_context["reduced_leaf_tot"] = leaf_tots
+        return min(leaf_accs.values()), np.array(total).mean()
+
+
+    def get_leafs_with_data(self, X):
+        (mapping, parents, l_child, r_child, pruned) = self.__reduced
+
+        indices = [[] for _ in range(len(mapping))]
+
+        for i in range(X.shape[0]):
+            j = 0
+            while l_child[j] > 0:
+                node = mapping[j]
+                if X[i][self.__decision_features[node]] < self.__thresholds[node]:
+                    j = l_child[j]
+                else:
+                    j = r_child[j]
+            indices[j].append(i)
+
+        data_ref = []
+        for i, ind in enumerate(indices):
+            if ind: # if any indices, this is a populated leaf and will be returned
+                data_ref.append((i, ind, self.__leaf_assignments[mapping[i][0] - self.__n_decision_nodes + 1]))
+        return data_ref
 
     def compute_leaf_accuracy(self, X, y, return_computed=True):
         # computes everything at once...
@@ -165,7 +254,6 @@ class ClassificationTree:
             return leaf_acc, tot_corr
 
     def visualize(self, path, view=False, data_handler=None, show_normalized_thresholds=True):
-        data_h = data_handler if data_handler is not None else self.__model_context["data_h"]
         dot = Digraph(comment="Decision tree")
 
         # for d in range(depth):
@@ -188,7 +276,7 @@ class ClassificationTree:
             else:
                 desc =  f"{self.__accuracy_context['leaf_totals'][node]} ({self.__accuracy_context['leaf_acc'][node]*100:.3g}%)"
             dot.node(f"dec{node}", desc, tooltip="tmp", shape="circle", color="red" if c == 1 else "green")#, style="filled")
-            # dot.node(f"dec{node}", f"{data_h.class_mapping[c]}", tooltip="tmp", shape="circle", color="red" if c == 1 else "green", style="filled")
+            # dot.node(f"dec{node}", f"{data_handler.class_mapping[c]}", tooltip="tmp", shape="circle", color="red" if c == 1 else "green", style="filled")
 
             parent_i = (node+offset) // 2
             if show_normalized_thresholds:
