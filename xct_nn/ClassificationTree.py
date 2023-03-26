@@ -346,3 +346,7 @@ class ClassificationTree:
     @property
     def leaf_assignments(self):
         return self.__leaf_assignments
+
+    @property
+    def n_classes(self):
+        return len(np.unique(self.__leaf_assignments))
