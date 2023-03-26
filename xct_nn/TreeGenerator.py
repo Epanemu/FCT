@@ -50,7 +50,11 @@ class TreeGenerator:
     def __depth_from_index(self, i):
         return np.floor(np.log2(i + 1)).astype(int)
 
-    def make_from_sklearn(self, sklearn_tree, hard_constr, train_data):
+    def make_from_sklearn(self, sklearn_tree, hard_constr, train_data, normalized_thresholds=True):
+        epsilons = self.data_h.epsilons
+        if not normalized_thresholds:
+            epsilons = self.data_h.unnormalize(epsilons)
+
         totdepth = sklearn_tree.max_depth
         decision_features = np.zeros((2**totdepth - 1,), dtype=int)
         thresholds = np.zeros((2**totdepth - 1,))
@@ -63,20 +67,23 @@ class TreeGenerator:
             if sklearn_tree.children_left[i] != -1: # if node is not a leaf
                 queue.append((sklearn_tree.children_left[i], depth+1, mapped*2+1))
                 queue.append((sklearn_tree.children_right[i], depth+1, mapped*2+2))
-                decision_features[mapped] = sklearn_tree.feature[i]
+                dec_feat_i = sklearn_tree.feature[i]
+                decision_features[mapped] = dec_feat_i
 
                 # sklearn uses <=, this implementation uses <
-                vals = train_data[:, sklearn_tree.feature[i]]
+                vals = train_data[:, dec_feat_i]
                 orig_thresh = sklearn_tree.threshold[i]
                 lower_equal_data = vals <= orig_thresh
                 diff = orig_thresh - vals[lower_equal_data]
                 closest_i = np.argmin(diff)
-                if diff[closest_i] < self.data_h.epsilons[sklearn_tree.feature[i]]:
-                    thresholds[mapped] = vals[lower_equal_data][closest_i] + self.data_h.epsilons[sklearn_tree.feature[i]]
+                if diff[closest_i] < epsilons[dec_feat_i]:
+                    thresholds[mapped] = vals[lower_equal_data][closest_i] + epsilons[dec_feat_i]
                 else:
                     thresholds[mapped] = orig_thresh
                 # or this, although this leads to more and bigger changes to the thresholds
                 # thresholds[mapped] = np.min(vals[vals > orig_thresh])
+                if not normalized_thresholds:
+                    thresholds[mapped] = (thresholds[mapped] - self.data_h.shifts[dec_feat_i]) / self.data_h.scales[dec_feat_i]
             else:
                 depth_remaining = totdepth - self.__depth_from_index(mapped)
                 for _ in range(depth_remaining):
