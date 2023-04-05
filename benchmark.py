@@ -6,14 +6,15 @@ from utils.datasets import DATASETS
 
 general_config = {
     "depth": 4,
-    "train_data_limit": 5_000,
+    "min_in_leaf": 10,
+    "train_data_limit": 10_000,
     "round_limit": 4,
     "memory_limit": 250,
     "thread_limit": 8,
-    "time_limit": 4*3600,
+    "time_limit": 8*3600,
     "mip_focus": 1,
     "mip_heuristics": 0.8,
-    "random_runs": 10,
+    "random_runs": 5,
 }
 
 # for straightforward approach
@@ -71,6 +72,7 @@ base_command = [
     f"-r {general_config['round_limit']}",
     f"-focus {general_config['mip_focus']}",
     f"-heur {general_config['mip_heuristics']}",
+    f"-lmin {general_config['min_in_leaf']}",
 ] + configuration["params"]
 
 os.makedirs(configuration["base_dir"], exist_ok=True)

@@ -23,6 +23,7 @@ parser.add_argument("-v", "--verbose",  action="store_true", help="Print model a
 parser.add_argument("-hard", "--hard_constr", action="store_true", help="Go with hard constraint in leaves")
 parser.add_argument("-init", "--init_type", default="warmstart", help="How should the values of previous tree be used? [warmstart, hint, fix_values]")
 parser.add_argument("-d", "--depth", type=int, default=5, help="Final depth of the tree")
+parser.add_argument("-lmin", "--min_in_leaves", type=int, default=1, help="Minimal number of points in each leaf")
 parser.add_argument("-max", "--max_data", type=int, default=10_000, help="Limit on data inputed into the model")
 
 # optimization parameters
@@ -48,7 +49,7 @@ time_limit = args.time_limit / (2**args.depth - 1)
 values = None
 for depth in range(1, args.depth+1):
     print(f"Creating model with depth {depth}...")
-    xct = XCT_MIP(depth, data_handler, hard_constraint=args.hard_constr)
+    xct = XCT_MIP(depth, data_handler, min_in_leaf=args.min_in_leaves, hard_constraint=args.hard_constr)
     xct.make_model(X_train, y_train)
 
     print("Optimizing the model...")

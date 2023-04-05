@@ -25,6 +25,7 @@ parser.add_argument("-v", "--verbose",  action="store_true", help="Print model a
 parser.add_argument("-hard", "--hard_constr", action="store_true", help="Go with hard constraint in leaves")
 parser.add_argument("-init", "--init_type", default="warmstart", help="How should the values of sklearn tree be used? [warmstart, hint, fix_values]")
 parser.add_argument("-d", "--depth", type=int, default=5, help="Depth of the tree")
+parser.add_argument("-lmin", "--min_in_leaves", type=int, default=1, help="Minimal number of points in each leaf")
 parser.add_argument("-max", "--max_data", type=int, default=50_000, help="Limit on data inputed into the model")
 
 # optimization parameters
@@ -59,7 +60,7 @@ tree = tree_gen.make_from_sklearn(dt_sklearn.tree_, soft_limit=20, train_data=X_
 values = tree.as_ab_values()
 
 print("Creating the MIP model...")
-xct = XCT_MIP(args.depth, data_handler, hard_constraint=args.hard_constr)
+xct = XCT_MIP(args.depth, data_handler, min_in_leaf=args.min_in_leaves, hard_constraint=args.hard_constr)
 xct.make_model(X_train, y_train)
 
 print("Optimizing the model...")
