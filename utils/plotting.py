@@ -74,6 +74,22 @@ def plot_in_axis(ax, vals, name, color, mode="minmax", show_train=True, show_tes
              lw=1))
 
 
+def plot_xgb_bar(ax, vals, show_train=True, show_test=True, mode="std"):
+    if mode == "std":
+        train = vals["TrainAcc"].mean()
+        test = vals["TestAcc"].mean()
+    elif mode == "minmax":
+        train = vals["TrainAcc"].median()
+        test = vals["TestAcc"].median()
+
+    y = ax.get_ylim()
+    if show_train:
+        ax.plot([train, train], y, linestyle='dotted', color="k")
+    if show_test:
+        ax.plot([test, test], y, linestyle='dashed', color="k")
+    ax.set_ylim(y)
+
+
 def add_labels(ax, title):
     ax.set_title(title)
     ax.set_xlabel("Accruacy of model")
@@ -88,7 +104,6 @@ def add_legend(ax, labels, colors, mode="std"):
     errorbar_handle = ax.errorbar([], [], xerr=1, yerr=1, capsize=2, linestyle="",
                 label=err_label, marker="", color="k")
 
-
     legend_elements = [
         Line2D([0], [0], marker='o', color=(1,1,1,0), label=f'{acc_measure} Train accuracy',
                           markeredgecolor="k", markerfacecolor=None, markersize=10),
@@ -96,6 +111,8 @@ def add_legend(ax, labels, colors, mode="std"):
                           markeredgecolor="k", markerfacecolor=None, markersize=10),
         errorbar_handle,
         Patch(hatch='///', edgecolor="k", facecolor=(1,1,1,0), label=gap_label),
+        Line2D([0], [0], linestyle='dotted', color="k", label=f'XGB Train accuracy'),
+        Line2D([0], [0], linestyle='dashed', color="k", label=f'XGB Test accuracy'),
         Patch(visible=False),  # spacer
     ] + [Patch(facecolor=c, edgecolor=(1,1,1,0), label=l) for c, l in zip(colors, labels)]
     ax.legend(handles=legend_elements)
