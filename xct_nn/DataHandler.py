@@ -27,7 +27,7 @@ class DataHandler:
         self.__n_features = self.__X.shape[1]
         self.__generate_stats(self.__X)
 
-    def get_training_data(self, split_seed=0, test_size=0.2, limit=np.iinfo(np.int32).max, reset_stats=True):
+    def get_training_data(self, split_seed=0, test_size=0.2, limit=np.iinfo(np.int32).max, test_limit=np.iinfo(np.int32).max, reset_stats=True):
         if test_size == 0:
             self.__X_train, self.__X_test, self.__y_train, self.__y_test = self.__X, np.zeros((0,self.__n_features)), self.__y, np.zeros((0,))
         else:
@@ -42,6 +42,7 @@ class DataHandler:
             self.__limit = limit
 
         self.__n_data = X.shape[0]
+        self.__test_limit = test_limit
         return self.normalize(X), y
 
     def __generate_stats(self, X):
@@ -134,7 +135,7 @@ class DataHandler:
 
     @property
     def test_data(self):
-        return self.__X_test, self.__y_test
+        return self.__X_test[:self.__test_limit], self.__y_test[:self.__test_limit]
 
     @property
     def all_data(self):
