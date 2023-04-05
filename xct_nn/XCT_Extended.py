@@ -1,34 +1,30 @@
-from xgboost import XGBClassifier
-from sklearn.model_selection import RandomizedSearchCV
+try:
+    from xgboost import XGBClassifier
+    from sklearn.model_selection import RandomizedSearchCV
+except ImportError:
+    print("XGBoost and/or sklearn is not available, related functions will fail.")
 import numpy as np
 
 from xct_nn.DataHandler import DataHandler
 
 class XCT_Extended:
-    # param_distributions = {
-    #     # "booster": ["gbtree", "gblinear", "dart"], # gblinear is not a tree model
-    #     "booster": ["gbtree", "dart"],
-    #     "max_depth": [3, 4, 5, 6, 7, 8, 9],
-    #     "min_child_weight": [0.1, 0.5, 1, 2, 5],
-    #     "max_leaves": [0, 5, 10, 15],
-    #     "max_delta_step": [0, 1, 5], # not needed
-    #     "min_split_loss": [0, 0.01, 0.05, 0.1],
-    #     # "reg_alpha": [0] # L1 regularization
-    #     # "reg_lambda": [1] # L2 regularization
-    #     "n_estimators": [20, 50, 100, 200, 500], # 1000 is too many to be able to compute...
-
-    #     # for binary
-    #     "objective": ["binary:logistic"],
-    #     # for multiclass:
-    #     # "objective": ["multi:softmax"],
-    #     # "num_class": [n_classes],
-    # }
-
     param_distributions = {
-        "booster": ["gbtree"],
-        "max_depth": [8],
-        "n_estimators": [200],
+        # "booster": ["gbtree", "gblinear", "dart"], # gblinear is not a tree model
+        "booster": ["gbtree", "dart"],
+        "max_depth": [3, 5, 7, 9],
+        "min_child_weight": [0.1, 0.5, 1, 2, 5],
+        "max_leaves": [0, 5, 10, 15],
+        "max_delta_step": [0, 1, 5], # not needed
+        "min_split_loss": [0, 0.01, 0.05, 0.1],
+        # "reg_alpha": [0] # L1 regularization
+        # "reg_lambda": [1] # L2 regularization
+        "n_estimators": [10, 20, 50, 100, 200], # don't want too many to be able to compute...
+
+        # for binary
         "objective": ["binary:logistic"],
+        # for multiclass: (do not use it yet, benchmark datasets are all binary)
+        # "objective": ["multi:softmax"],
+        # "num_class": [n_classes],
     }
 
     def __init__(self, classification_tree, data_handler, seed=0, cv_folds=3, search_iterations=100, context=None):
@@ -77,7 +73,7 @@ class XCT_Extended:
                     best_params = search.best_params_
                 else:
                     # if you cannot do cross validation, optimize with some simple paramteters
-                    best_params = {"booster": "dart", "max_depth": 5, "n_estimators": 5, "objective": "binary:logistic"}
+                    best_params = {"booster": "dart", "max_depth": 5, "n_estimators": 1, "objective": "binary:logistic"}
 
                 xgboost = XGBClassifier(random_state=seed, **best_params)
                 xgboost.fit(X[indices], y[indices])
