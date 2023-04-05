@@ -1,5 +1,6 @@
 import pandas as pd
 import pickle
+import os
 
 from xct_nn.TreeGenerator import TreeGenerator
 from xct_nn.DataHandler import DataHandler
@@ -78,7 +79,6 @@ def get_stats(ctx_path, data_h, sklearn_warm=False, soft_limit=0):
         sklearn_path = ctx_path[:-4] + "_sklearn.pickle"
         with open(sklearn_path, "rb") as f:
             skltree = pickle.load(f)
-        # with soft constraint
         start_tree = gen.make_from_sklearn(skltree.tree_, soft_limit, data_h.normalize(data_h.used_data[0]))
 
     X, y = data_h.used_data
@@ -110,7 +110,6 @@ def get_reduced_stats(ctx_path, data_h, sklearn_warm=False, soft_limit=0):
         sklearn_path = ctx_path[:-4] + "_sklearn.pickle"
         with open(sklearn_path, "rb") as f:
             skltree = pickle.load(f)
-        # with soft constraint
         start_tree = gen.make_from_sklearn(skltree.tree_, soft_limit, data_h.normalize(data_h.used_data[0]))
         start_tree.reduce_tree(data_h)
 
@@ -131,34 +130,38 @@ def get_reduced_stats(ctx_path, data_h, sklearn_warm=False, soft_limit=0):
     return tr_acc, tr_leaf_acc, test_acc, test_leaf_acc
 
 
-def get_extended_stats(ctx_path, data_h, seed, sklearn_warm=False, soft_limit=0):
-    # TODO make this load the extended model from a file...
-    with open(ctx_path, "rb") as f:
-        ctx = pickle.load(f)
+def get_extended_stats(ctx_path, data_h, sklearn_warm=False, soft_limit=0):
+    extended_path = ctx_path[:-4] + "_ext.ctx"
 
-    gen = TreeGenerator(data_h)
-    tree = gen.make_from_context(ctx)
-    ext_tree = XCT_Extended(tree, data_h, seed=seed, search_iterations=1)
+    if not os.path.exists(extended_path):
+        if sklearn_warm:
+            return None, None, None, None, None, None, None, None
+        return None, None, None, None
 
+    with open(extended_path, "rb") as f:
+        ext_ctx = pickle.load(f)
+
+    ext_tree = XCT_Extended.create_from_context(ext_ctx)
     if sklearn_warm:
-        sklearn_path = ctx_path[:-4] + "_sklearn.pickle"
-        with open(sklearn_path, "rb") as f:
-            skltree = pickle.load(f)
-        # with soft constraint
-        start_tree = gen.make_from_sklearn(skltree.tree_, soft_limit, data_h.normalize(data_h.used_data[0]))
-        ext_start_tree = XCT_Extended(start_tree, data_h, seed=seed, search_iterations=1)
+        skl_ext_path = ctx_path[:-4] + "_sklearn_ext.ctx"
+        if os.path.exists(skl_ext_path):
+            with open(skl_ext_path, "rb") as f:
+                skl_ctx = pickle.load(f)
+            start_tree = XCT_Extended.create_from_context(skl_ctx)
+        else:
+            sklearn_warm = False
 
     X, y = data_h.used_data
     X = data_h.unnormalize(data_h.normalize(X))
     tr_leaf_acc, tr_acc = ext_tree.compute_accuracy(X, y, soft_limit=soft_limit)
     if sklearn_warm:
-        tr_leaf_acc_s, tr_acc_s = ext_start_tree.compute_accuracy(X, y, soft_limit=soft_limit)
+        tr_leaf_acc_s, tr_acc_s = start_tree.compute_accuracy(X, y, soft_limit=soft_limit)
 
     X, y = data_h.test_data
     X = data_h.unnormalize(data_h.normalize(X))
     test_leaf_acc, test_acc = ext_tree.compute_accuracy(X, y, soft_limit=soft_limit)
     if sklearn_warm:
-        test_leaf_acc_s, test_acc_s = ext_start_tree.compute_accuracy(X, y, soft_limit=soft_limit)
+        test_leaf_acc_s, test_acc_s = start_tree.compute_accuracy(X, y, soft_limit=soft_limit)
 
     if sklearn_warm:
         return tr_acc, tr_leaf_acc, test_acc, test_leaf_acc, tr_acc_s, tr_leaf_acc_s, test_acc_s, test_leaf_acc_s
@@ -257,7 +260,7 @@ def retrieve_information(base_dir, sklearn_warm=False, gradual_depth=None, soft_
                 red_train_leaf_soft_accs.append(red_s_res[1])
                 red_test_leaf_soft_accs.append(red_s_res[3])
 
-                train, _, test, _ = get_extended_stats(ctx_path, data_h, seed=ctx["data_h_setup"]["split_seed"])
+                train, _, test, _ = get_extended_stats(ctx_path, data_h)
                 extend_train_accs.append(train)
                 extend_test_accs.append(test)
 
@@ -342,7 +345,7 @@ def retrieve_information(base_dir, sklearn_warm=False, gradual_depth=None, soft_
             red_train_leaf_soft_accs.append(red_s_res[1])
             red_test_leaf_soft_accs.append(red_s_res[3])
 
-            ext_res = get_extended_stats(ctx_path, data_h, seed=ctx["data_h_setup"]["split_seed"], sklearn_warm=sklearn_warm)
+            ext_res = get_extended_stats(ctx_path, data_h, sklearn_warm=sklearn_warm)
             extend_train_accs.append(ext_res[0])
             extend_test_accs.append(ext_res[2])
 
