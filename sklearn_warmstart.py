@@ -50,7 +50,7 @@ logfile_base = args.results_dir + f"/run{args.random_seed}"
 time_limit = args.time_limit
 
 print("Preparing sklearn model...")
-dt_sklearn = skltree.DecisionTreeClassifier(max_depth=args.depth, random_state=args.random_seed)
+dt_sklearn = skltree.DecisionTreeClassifier(max_depth=args.depth, min_samples_leaf=args.min_in_leaves, random_state=args.random_seed)
 dt_sklearn.fit(X_train, y_train)
 with open(f"{logfile_base}_sklearn.pickle", "wb") as f:
     pickle.dump(dt_sklearn, f)
