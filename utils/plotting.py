@@ -77,7 +77,8 @@ def plot_in_axis(ax, vals, name, color, mode="minmax", show_train=True, show_tes
         ax.set_xlim((0.45, 1.05))
         ax.set_ylim((-0.05, 1.05))
 
-def plot_xgb_bar(ax, vals, show_train=True, show_test=True, mode="std"):
+
+def plot_xgb_bar(ax, vals, color="k", show_train=True, show_test=True, mode="std"):
     if mode == "std":
         train = vals["TrainAcc"].mean()
         test = vals["TestAcc"].mean()
@@ -87,9 +88,9 @@ def plot_xgb_bar(ax, vals, show_train=True, show_test=True, mode="std"):
 
     y = ax.get_ylim()
     if show_train:
-        ax.plot([train, train], y, linestyle='dotted', color="k")
+        ax.plot([train, train], y, linestyle='dotted', color=color)
     if show_test:
-        ax.plot([test, test], y, linestyle='dashed', color="k")
+        ax.plot([test, test], y, linestyle='dashed', color=color)
     ax.set_ylim(y)
 
 
@@ -114,8 +115,8 @@ def add_legend(ax, labels, colors, mode="std"):
                           markeredgecolor="k", markerfacecolor=None, markersize=10),
         errorbar_handle,
         Patch(hatch='///', edgecolor="k", facecolor=(1,1,1,0), label=gap_label),
-        Line2D([0], [0], linestyle='dotted', color="k", label=f'XGB Train accuracy'),
-        Line2D([0], [0], linestyle='dashed', color="k", label=f'XGB Test accuracy'),
+        # Line2D([0], [0], linestyle='dotted', color="k", label=f'XGB Train accuracy'),
+        Line2D([0], [0], linestyle='dashed', color="k", label=f'XGB approx accuracy'),
         Patch(visible=False),  # spacer
     ] + [Patch(facecolor=c, edgecolor=(1,1,1,0), label=l) for c, l in zip(colors, labels)]
     ax.legend(handles=legend_elements)
