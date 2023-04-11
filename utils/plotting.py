@@ -15,7 +15,7 @@ def scale_lightness(rgb, scale_l):
     # manipulate h, l, s values and return as rgb
     return colorsys.hls_to_rgb(h, min(0.7, l * scale_l), s)
 
-def plot_in_axis(ax, vals, name, color, mode="minmax", show_train=True, show_test=True, bar_width=0.002, show_bounds=True):
+def plot_in_axis(ax, vals, name, color, mode="minmax", show_train=True, show_test=True, bar_width=0.002, show_bounds=True, fixed_lims=False):
     # ax.scatter(vals["TrainAcc"], vals["TrainLeafAcc"], label=f"{name} - train", color=color)
     # ax.scatter(vals["TestAcc"], vals["TestLeafAcc"], label=f"{name} - test", marker="v", color=color)
 
@@ -73,6 +73,9 @@ def plot_in_axis(ax, vals, name, color, mode="minmax", show_train=True, show_tes
              fill=False,
              lw=1))
 
+    if fixed_lims:
+        ax.set_xlim((0.45, 1.05))
+        ax.set_ylim((-0.05, 1.05))
 
 def plot_xgb_bar(ax, vals, show_train=True, show_test=True, mode="std"):
     if mode == "std":
