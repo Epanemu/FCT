@@ -17,17 +17,17 @@ def scale_lightness(rgb, scale_l):
 
 def plot_in_axis(ax, vals, name, color, mode="minmax", show_train=True, show_test=True, bar_width=0.002, show_bounds=True, fixed_lims=False):
     # ax.scatter(vals["TrainAcc"], vals["TrainLeafAcc"], label=f"{name} - train", color=color)
-    # ax.scatter(vals["TestAcc"], vals["TestLeafAcc"], label=f"{name} - test", marker="v", color=color)
+    # ax.scatter(vals["TestAcc"], vals["TestLeafAcc"], label=f"{name} - test", marker="D", color=color)
 
     # ax.scatter([vals["TrainAcc"].mean()], [vals["TrainLeafAcc"].mean()], label=f"{name} - train", markersize=15, color=color)
-    # ax.scatter([vals["TestAcc"].mean()], [vals["TestLeafAcc"].mean()], label=f"{name} - test", marker="v", markersize=15, color=color)
+    # ax.scatter([vals["TestAcc"].mean()], [vals["TestLeafAcc"].mean()], label=f"{name} - test", marker="D", markersize=15, color=color)
 
     # ax.errorbar([vals["TrainAcc"].mean()], [vals["TrainLeafAcc"].mean()],
     #             xerr=vals["TrainAcc"].std(), yerr=vals["TrainLeafAcc"].std(), capthick=20,
     #             label=f"{name} - train",marker="o", markersize=8, color=color)
     # ax.errorbar([vals["TestAcc"].mean()], [vals["TestLeafAcc"].mean()],
     #             xerr=vals["TestAcc"].std(), yerr=vals["TestLeafAcc"].std(),
-    #             label=f"{name} - test", marker="v", markersize=8, color=color)
+    #             label=f"{name} - test", marker="D", markersize=8, color=color)
 
     if mode == "std":
         if show_train:
@@ -38,7 +38,7 @@ def plot_in_axis(ax, vals, name, color, mode="minmax", show_train=True, show_tes
         if show_test:
             ax.errorbar([vals["TestAcc"].mean()], [vals["TestLeafAcc"].mean()],
                         xerr=vals["TestAcc"].std(), yerr=vals["TestLeafAcc"].std(), capsize=2,
-                        label=f"{name} - test", marker="v", markersize=8,
+                        label=f"{name} - test", marker="D", markersize=8,
                         markerfacecolor=(1,1,1,0), markeredgecolor=color, color=color)
         bar_y = vals["TrainLeafAcc"].mean()
         bar_x = vals["TrainAcc"].mean() - bar_width/2
@@ -58,7 +58,7 @@ def plot_in_axis(ax, vals, name, color, mode="minmax", show_train=True, show_tes
             max_x, min_x = vals["TestAcc"].max(), vals["TestAcc"].min()
             max_y, min_y = vals["TestLeafAcc"].max(), vals["TestLeafAcc"].min()
             ax.errorbar([x], [y], xerr=[[x-min_x], [max_x-x]], yerr=[[y-min_y],[max_y-y]],
-                        capsize=2, label=f"{name} - test", marker="v", markersize=8,
+                        capsize=2, label=f"{name} - test", marker="D", markersize=8,
                         markerfacecolor=(1,1,1,0), markeredgecolor=color, color=color)
         bar_y = vals["TrainLeafAcc"].max()
         bar_x = vals["TrainAcc"].median() - bar_width/2
@@ -115,7 +115,7 @@ def add_legend(ax, labels, colors, mode="std", show_train=True, show_test=True, 
                           markeredgecolor="k", markerfacecolor=None, markersize=10))
     if show_test:
         legend_elements.append(
-            Line2D([0], [0], marker="v", color=(1,1,1,0), label=f'{acc_measure} Test accuracy',
+            Line2D([0], [0], marker="D", color=(1,1,1,0), label=f'{acc_measure} Test accuracy',
                           markeredgecolor="k", markerfacecolor=None, markersize=10))
     legend_elements.append(errorbar_handle)
 
