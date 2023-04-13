@@ -100,7 +100,7 @@ def add_labels(ax, title):
     ax.set_ylabel("Lowest (soft) accuracy in a leaf")
 
 
-def add_legend(ax, labels, colors, mode="std"):
+def add_legend(ax, labels, colors, mode="std", show_train=True, show_test=True, show_xgb=True):
     err_label = "Standard deviation" if mode=="std" else "Min - Max range"
     acc_measure = "Mean" if mode=="std" else "Median"
     gap_label = "Mean objective gap" if mode=="std" else "Best objective gap"
@@ -108,15 +108,25 @@ def add_legend(ax, labels, colors, mode="std"):
     errorbar_handle = ax.errorbar([], [], xerr=1, yerr=1, capsize=2, linestyle="",
                 label=err_label, marker="", color="k")
 
-    legend_elements = [
-        Line2D([0], [0], marker='o', color=(1,1,1,0), label=f'{acc_measure} Train accuracy',
-                          markeredgecolor="k", markerfacecolor=None, markersize=10),
-        Line2D([0], [0], marker='v', color=(1,1,1,0), label=f'{acc_measure} Test accuracy',
-                          markeredgecolor="k", markerfacecolor=None, markersize=10),
-        errorbar_handle,
-        Patch(hatch='///', edgecolor="k", facecolor=(1,1,1,0), label=gap_label),
-        # Line2D([0], [0], linestyle='dotted', color="k", label=f'XGB Train accuracy'),
-        Line2D([0], [0], linestyle='dashed', color="k", label=f'XGB approx accuracy'),
-        Patch(visible=False),  # spacer
+    legend_elements = []
+    if show_train:
+        legend_elements.append(
+            Line2D([0], [0], marker='o', color=(1,1,1,0), label=f'{acc_measure} Train accuracy',
+                          markeredgecolor="k", markerfacecolor=None, markersize=10))
+    if show_test:
+        legend_elements.append(
+            Line2D([0], [0], marker="v", color=(1,1,1,0), label=f'{acc_measure} Test accuracy',
+                          markeredgecolor="k", markerfacecolor=None, markersize=10))
+    legend_elements.append(errorbar_handle)
+
+    if show_train:
+        legend_elements.append(Patch(hatch='///', edgecolor="k", facecolor=(1,1,1,0), label=gap_label))
+        if show_xgb:
+            legend_elements.append(Line2D([0], [0], linestyle='dotted', color="k", label=f'XGBoost Train accuracy'))
+    if show_test and show_xgb:
+        legend_elements.append(Line2D([0], [0], linestyle='dashed', color="k", label=f'XGBoost accuracy'))
+
+    legend_elements += [Patch(visible=False),  # spacer
     ] + [Patch(facecolor=c, edgecolor=(1,1,1,0), label=l) for c, l in zip(colors, labels)]
+
     ax.legend(handles=legend_elements)
