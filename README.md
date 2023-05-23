@@ -1,13 +1,41 @@
-# XCT_nn
-#### eXplained Clasification Tree with NNs in leaves
-An ML model with clasification tree optimized for leaf accuracy. This accuracy is then further improved by Neural Networks. (Work in Progress...)
+# FCT: Fair Clasification Tree
 
-The model combines the explainability of Classification Trees with the accuracy of Neural Nets.
+A low-depth Classification Tree that is optimized for leaf accuracy.
 
-## Examples
+After this, leaves of the tree are extended using further models. In this implementation, we extend using XGBoost models. However, we could choose any model in practie.
 
-The scripts `highest_acc_tester*` perform a halving algorithm that seeks the highest accuracy,
-for which a model can be found under an hour by the solver.
+The hybrid tree combines the explainability of Classification Trees with the accuracy of XGBoost.
 
-The script `gradual_depth_increase.py` performs a series of MIP optimization, where it increases the depth of the model,
-while using the solution of previous tree as a warm start
+## Results
+To generate visualizations and tables used in the paper see `Results.ipynb`.
+
+
+## Requirements
+Requirements are listed in the `requirements.txt` file. To install them, run ```pip install -r requirements.txt```
+
+## Datasets
+To download datasets, run ```python ./utils/openml_data_down.py```. This downloads the classification part of the tabular benchmark by Grinzstajn et al. to folders `./data/openml/categorical` and `./data/openml/numerical`.
+
+## Usage
+Regarding the configurations that were executed, they are listed in `benchmark.py`
+That script cannot be run, it is made for use on a cluster where the experiments were executed.
+
+
+### Hybrid-trees
+A simple proof-of-concept example is in `Example.ipynb` with a walkthrough.
+
+To run the proper optimization yourself, follow these 2 steps:
+ - Run `python sklearn_warmstart.py -data path/to/data -res path/to/results` This will compute the low-depth tree for the data with default parameters, as presented in the paper. Data must be in the same format that is used in the download script. Results folder must be created in advance. For different hyperparameters, refer to the python implementation. This creates a `run0.ctx` in the `path/to/results` folder. This is the context representing the model (0 in the name is the seed used). You can choose different strategy of optimization by selecting different python script from `sklearn_warmstart.py`. The options are:
+    - `sklearn_warmstart.py` for Warmstrarted variant
+    - `gradual.py` for Gradual variant
+    - `direct.py` for Direct variant
+    - `halving.py` for Halving variant - not used in the paper, an earlier version using bisection, described in the thesis
+    - `oct.py` for OCT
+ - Then, run `python finalize_model.py path/to/results/[model].ctx` to extend the tree stored in `[model].ctx` file with XGBoost models in leaves. The hybrid tree will be saved in a `[model]_ext.ctx`. This file can then be loaded using the functions in `src/UtilityHelper.py`
+
+To investigate how were the results collected, see the function `retrieve_information()` in `src/UtilityHelper.py`
+
+### CART
+To run the optimization of CART methods, run the following: `python find_best_trees.py` This generates a file per configuration, containing the same information as used in the `Results.ipynb`
+
+Note that the script takes a lot of time to finish, and can take a lot of memory as well.
