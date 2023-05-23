@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import pickle
 import os
 
@@ -27,13 +28,18 @@ class UtilityHelper:
             _ = tree.compute_leaf_accuracy_reduced(X, y, soft_limit=soft_limit)
             tree.visualize_reduced(path+"_red_test", view, self.data_h)
 
-    def visualize_sklearn(self, skltree, path, soft_limit=0, view=False):
+    def visualize_sklearn(self, skltree, path, soft_limit=0, view=False, visualize_test=False):
         # i use own implementation of tree to compute the acc, should be the same to sklearn methods
         tree = self.tree_gen.make_from_sklearn(skltree.tree_, soft_limit, self.norm_X)
         _ = tree.compute_leaf_accuracy(self.used_X, self.used_y, soft_limit=soft_limit)
         tree.visualize(path, data_handler=self.data_h, view=view)
         tree.reduce_tree(self.data_h)
         tree.visualize_reduced(path+"_red", view, self.data_h)
+        if visualize_test:
+            X, y = self.data_h.test_data
+            X = self.data_h.unnormalize(self.data_h.normalize(X))
+            _ = tree.compute_leaf_accuracy_reduced(X, y, soft_limit=soft_limit)
+            tree.visualize_reduced(path+"_red_test", view, self.data_h)
 
     def get_accuracy_from_ctx(self, ctx, X, y, soft_limit=0):
         tree = self.tree_gen.make_from_context(ctx)
@@ -50,6 +56,8 @@ class UtilityHelper:
         tree = self.tree_gen.make_from_context(xct_mip.get_base_context())
         _ = tree.compute_leaf_accuracy(self.used_X, self.used_y)
         # checking counts is sufficient for my case
+        if "points_in_leaf" not in xct_mip.vars:
+            return False, np.zeros_like(xct_mip.vars["point_assigned"].X)
         diff = xct_mip.vars["points_in_leaf"].X.round(0) - tree.leaf_totals
         return any(diff != 0), diff
 
@@ -67,6 +75,18 @@ class UtilityHelper:
         _ = tree.compute_leaf_accuracy(self.used_X, self.used_y)
         return (tree.leaf_totals == 0).sum()
 
+def get_n_leaves_reduced(ctx_path, data_h):
+    with open(ctx_path, "rb") as f:
+        ctx = pickle.load(f)
+
+    gen = TreeGenerator(data_h)
+    tree = gen.make_from_context(ctx)
+    d = 2**tree.depth
+    tree.reduce_tree(data_h)
+
+    X, y = data_h.used_data
+    X_reduced = data_h.unnormalize(data_h.normalize(X))
+    return d - len(tree.get_leafs_with_data(X_reduced))
 
 def get_stats(ctx_path, data_h, sklearn_warm=False, soft_limit=0):
     with open(ctx_path, "rb") as f:
@@ -193,6 +213,7 @@ def retrieve_information(base_dir, sklearn_warm=False, gradual_depth=None, soft_
     gap = []
     obj_bound = []
     status = []
+    removed_leafs = []
     if sklearn_warm:
         skl_train_accs = []
         skl_train_leaf_accs = []
@@ -239,6 +260,7 @@ def retrieve_information(base_dir, sklearn_warm=False, gradual_depth=None, soft_
                 gap.append(ctx["objective_gap"])
                 obj_bound.append(ctx["objective_bound"])
                 status.append(ctx["status"])
+                removed_leafs.append(get_n_leaves_reduced(ctx_path, data_h))
 
                 res = get_stats(ctx_path, data_h, soft_limit=0)
                 train_accs.append(res[0])
@@ -261,6 +283,10 @@ def retrieve_information(base_dir, sklearn_warm=False, gradual_depth=None, soft_
                 red_test_leaf_soft_accs.append(red_s_res[3])
 
                 train, _, test, _ = get_extended_stats(ctx_path, data_h)
+                # if depth == 4:
+                #     train, _, test, _ = get_extended_stats(ctx_path, data_h)
+                # else:
+                #     train, test = None, None
                 extend_train_accs.append(train)
                 extend_test_accs.append(test)
 
@@ -284,6 +310,7 @@ def retrieve_information(base_dir, sklearn_warm=False, gradual_depth=None, soft_
             jobs[f"ObjGap{depth}"] = gap
             jobs[f"ObjBound{depth}"] = obj_bound
             jobs[f"Status{depth}"] = status
+            jobs[f"RemovedLeaves{depth}"] = removed_leafs
 
             train_accs = []
             train_leaf_accs = []
@@ -305,9 +332,17 @@ def retrieve_information(base_dir, sklearn_warm=False, gradual_depth=None, soft_
             gap = []
             obj_bound = []
             status = []
+            removed_leafs = []
     else:
         for i, job in jobs.iterrows():
             ctx_path = job["Path"][:-4] + ".ctx"
+
+            if not os.path.exists(ctx_path):
+                folder_path = job["Path"][:-8]
+                for filename in os.listdir(folder_path):
+                    if filename.endswith(".sol") and filename[3] == job["Path"][-5]:
+                        ctx_path = os.path.join(folder_path, filename[:-3]+"ctx")
+                        break
 
             with open(ctx_path, "rb") as f:
                 ctx = pickle.load(f)
@@ -324,6 +359,7 @@ def retrieve_information(base_dir, sklearn_warm=False, gradual_depth=None, soft_
             gap.append(ctx["objective_gap"])
             obj_bound.append(ctx["objective_bound"])
             status.append(ctx["status"])
+            removed_leafs.append(get_n_leaves_reduced(ctx_path, data_h))
 
             res = get_stats(ctx_path, data_h, sklearn_warm, soft_limit=0)
             train_accs.append(res[0])
@@ -366,8 +402,8 @@ def retrieve_information(base_dir, sklearn_warm=False, gradual_depth=None, soft_
                 skl_red_train_leaf_soft_accs.append(red_s_res[5])
                 skl_red_test_leaf_soft_accs.append(red_s_res[7])
 
-                skl_extend_train_accs.append(ext_res[4])
-                skl_extend_test_accs.append(ext_res[6])
+                # skl_extend_train_accs.append(ext_res[4])
+                # skl_extend_test_accs.append(ext_res[6])
 
 
         jobs["TrainAcc"] = train_accs
@@ -393,6 +429,7 @@ def retrieve_information(base_dir, sklearn_warm=False, gradual_depth=None, soft_
         jobs["ObjGap"] = gap
         jobs["ObjBound"] = obj_bound
         jobs["Status"] = status
+        jobs["RemovedLeaves"] = removed_leafs
         if sklearn_warm:
             jobs["StartTrainAcc"] = skl_train_accs
             jobs["StartTrainLeafAcc"] = skl_train_leaf_accs
@@ -406,8 +443,8 @@ def retrieve_information(base_dir, sklearn_warm=False, gradual_depth=None, soft_
             jobs["StartReducedTestAcc"] = skl_red_test_accs
             jobs["StartReducedTestLeafAcc"] = skl_red_test_leaf_accs
             jobs["StartReducedTestLeafAccSoft"] = skl_red_test_leaf_soft_accs
-            jobs["StartExtendedTrainAcc"] = skl_extend_train_accs
-            jobs["StartExtendedTestAcc"] = skl_extend_test_accs
+            # jobs["StartExtendedTrainAcc"] = skl_extend_train_accs
+            # jobs["StartExtendedTestAcc"] = skl_extend_test_accs
 
     data_types = []
     dataset_names = []
