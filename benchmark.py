@@ -2,11 +2,11 @@ import os
 import subprocess
 import pickle
 
-from utils.datasets import DATASETS
+from utils.datasets import DATASETS_INFO
 
 general_config = {
     "depth": 4,
-    "min_in_leaf": 10,
+    "min_in_leaf": 50,
     "train_data_limit": 10_000,
     "round_limit": 4,
     "memory_limit": 250,
@@ -14,50 +14,61 @@ general_config = {
     "time_limit": 8*3600,
     "mip_focus": 1,
     "mip_heuristics": 0.8,
-    "random_runs": 5,
+    "random_runs": 10,
 }
 
-# for straightforward approach
+# for Direct
 # configuration = {
-#     "variant": "directMIP",
-#     "base_dir": f"benchmark/direct/d4_10k",
-#     "shortcut": f"D10k",
-#     "script_path": "highest_acc_tester_openml.py",
+#     "variant": "direct",
+#     "base_dir": f"benchmark/direct/runname",
+#     "shortcut": f"D",
+#     "script_path": "direct.py",
 #     "params": [],
 # }
 
-# for sklearn warmstart
+# for Warmstarted using CART
+configuration = {
+    "variant": "sklearn_start",
+    "base_dir": f"benchmark/warmstart/runname",
+    "shortcut": f"W",
+    "script_path": "sklearn_warmstart.py",
+    "params": ["-init hint"],
+}
+
+# for Gradual increase of depth
 # configuration = {
-#     "variant": "sklearn_start",
-#     "base_dir": f"benchmark/warmstart/d4_10k_hint",
-#     "shortcut": f"Wh",
-#     "script_path": "sklearn_warmstart.py",
+#     "variant": "gradual_increase",
+#     "base_dir": f"benchmark/gradual/runname",
+#     "shortcut": f"G",
+#     "script_path": "gradual_depth_increase.py",
 #     "params": ["-init hint"],
 # }
 
-# for gradual increase of depth
-configuration = {
-    "variant": "gradual_increase",
-    "base_dir": f"benchmark/gradual/d4_10k_30min_first_fix_hard_round4",
-    "shortcut": f"Gfh",
-    "script_path": "gradual_depth_increase.py",
-    # "params": ["-init hint"],
-    "params": ["-init fix_values -hard"],
-}
-
-# for halving algorithm
+# for OCT direct
 # configuration = {
-#     "variant": "halvingMIP",
-#     "base_dir": "benchmark/halving/d4_10k",
-#     "shortcut": "H",
-#     "script_path": "highest_acc_tester_openml.py",
-#     "time_limit": 3600, # 1 hour
+#     "variant": "OCT",
+#     "base_dir": f"benchmark/OCT/runname",
+#     "shortcut": f"O",
+#     "script_path": "oct.py",
+#     "params": [],
+# }
 
-#     "feasibility_only": True, # faster this way
-#     "halving": True,
-#     "upper_limit": 1,
-#     "lower_limit": 0,
-#     "required_precision": 0.001,
+# for OCT direct
+# configuration = {
+#     "variant": "OCT",
+#     "base_dir": f"benchmark/OCT/warm_runname",
+#     "shortcut": f"Ow",
+#     "script_path": "oct.py",
+#     "params": ["-warm"],
+# }
+
+# for halving - not presented in the paper
+# configuration = {
+#     "variant": "halving",
+#     "base_dir": f"benchmark/halving/runname",
+#     "shortcut": f"H",
+#     "script_path": "halving.py",
+#     "params": ["-u 1 -l 0.5 -prec 0.001"], # all are binary classifications, otherwise should the lower bound be 1/K
 # }
 
 
@@ -77,12 +88,22 @@ base_command = [
 
 os.makedirs(configuration["base_dir"], exist_ok=True)
 with open(configuration["base_dir"] + "/config.pickle", "wb") as f:
-    pickle.dump((general_config, configuration, DATASETS), f)
+    pickle.dump((general_config, configuration, DATASETS_INFO), f)
 
 jobs = []
 for rand_seed in range(general_config["random_runs"]):
-    for dataset_type in DATASETS:
-        for dataset_name, dataset_path in DATASETS[dataset_type].items():
+    for dataset_type in DATASETS_INFO:
+        for dataset_name, dataset_info in DATASETS_INFO[dataset_type].items():
+# for rand_seed, dataset_type, dataset_name in [ # Uncomment for selective extra runs
+#         (0, "categorical", "albert"),
+#     ]:
+#     if True:
+#         if True:
+#             dataset_info = DATASETS_INFO[dataset_type][dataset_name]
+            dataset_path = dataset_info["path"]
+            if dataset_info["n_features"] > 30 or (dataset_info["n_points"] > 10000/0.8 and dataset_info["n_features"] > 20):
+                max_memory = 128
+
             res_path = os.path.join(configuration["base_dir"], dataset_type, dataset_name)
             os.makedirs(res_path, exist_ok=True)
 
@@ -98,6 +119,7 @@ for rand_seed in range(general_config["random_runs"]):
             precommand = [
                 "sbatch",
                 "--parsable",
+                f"--mem={max_memory*1024}",
                 f"--out={outfile}",
                 f"--job-name={job_name}",
                 f"--cpus-per-task={general_config['thread_limit']}",
