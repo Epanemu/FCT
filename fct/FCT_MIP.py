@@ -5,7 +5,7 @@ except ImportError:
     print("Gurobi is not available, related functions will fail.")
 import numpy as np
 
-class XCT_MIP:
+class FCT_MIP:
     def __init__(self, depth, data_handler, min_in_leaf=1, leaf_accuracy=None, leaf_acc_limit=20, max_invalid=None, only_feasibility=False, hard_constraint=False):
         self.depth = depth
         self.data_h = data_handler

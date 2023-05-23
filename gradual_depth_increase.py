@@ -4,9 +4,9 @@ import os
 import pickle
 import argparse
 
-from xct_nn.XCT_MIP import XCT_MIP
-from xct_nn.DataHandler import DataHandler
-from xct_nn.UtilityHelper import UtilityHelper
+from fct_nn.FCT_MIP import FCT_MIP
+from fct_nn.DataHandler import DataHandler
+from fct_nn.UtilityHelper import UtilityHelper
 
 parser = argparse.ArgumentParser()
 # data parameters
@@ -49,21 +49,21 @@ time_limit = args.time_limit / (2**args.depth - 1)
 values = None
 for depth in range(1, args.depth+1):
     print(f"Creating model with depth {depth}...")
-    xct = XCT_MIP(depth, data_handler, min_in_leaf=args.min_in_leaves, hard_constraint=(not args.sot_constr))
-    xct.make_model(X_train, y_train)
+    fct = FCT_MIP(depth, data_handler, min_in_leaf=args.min_in_leaves, hard_constraint=(not args.sot_constr))
+    fct.make_model(X_train, y_train)
 
     print("Optimizing the model...")
     initialize = args.init_type if values is not None else None
-    res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, mip_focus=args.mip_focus, mip_heuristics=args.mip_heuristics, log_file=f"{logfile_base}_d{depth}.log", initialize=initialize, values=values, verbose=args.verbose)
+    res = fct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, mip_focus=args.mip_focus, mip_heuristics=args.mip_heuristics, log_file=f"{logfile_base}_d{depth}.log", initialize=initialize, values=values, verbose=args.verbose)
 
     time_limit *= 2 # double the time limit after each depth
-    status = xct.get_humanlike_status()
+    status = fct.get_humanlike_status()
 
     if res:
-        acc = xct.model.getObjective().getValue()
+        acc = fct.model.getObjective().getValue()
 
-        ctx = xct.get_base_context()
-        problem, diff = util.check_leaf_assignment(xct)
+        ctx = fct.get_base_context()
+        problem, diff = util.check_leaf_assignment(fct)
         misassigned = np.abs(diff).sum()/2
         ctx["n_misassigned"] = misassigned
         if problem:
@@ -76,11 +76,11 @@ for depth in range(1, args.depth+1):
         # adding depth would not work with fixing the upper levels and does not help much in other cases
         values = ctx["a"], ctx["b"]
 
-        xct.model.write(f"{logfile_base}_d{depth}.sol")
+        fct.model.write(f"{logfile_base}_d{depth}.sol")
         print(f"At depth {depth} found a solution with {acc*100} leaf accuracy - {status}")
     else:
         print(f"At depth {depth} did not find a solution - {status}")
         if status == "INF":
-            xct.model.computeIIS()
-            xct.model.write(f"{logfile_base}_{status}.ilp")
+            fct.model.computeIIS()
+            fct.model.write(f"{logfile_base}_{status}.ilp")
         break

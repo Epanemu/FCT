@@ -6,9 +6,9 @@ import pickle
 import argparse
 import numpy as np
 
-from xct_nn.XCT_MIP import XCT_MIP
-from xct_nn.DataHandler import DataHandler
-from xct_nn.UtilityHelper import UtilityHelper
+from fct_nn.FCT_MIP import FCT_MIP
+from fct_nn.DataHandler import DataHandler
+from fct_nn.UtilityHelper import UtilityHelper
 
 parser = argparse.ArgumentParser()
 # data parameters
@@ -62,19 +62,19 @@ last_time = time.time()
 while high - low > args.required_prec:
     # could be improved by warmstarting with the best so far solution
     m = (high+low) / 2
-    xct = XCT_MIP(args.depth, data_handler, min_in_leaf=args.min_in_leaves, leaf_accuracy=m, only_feasibility=args.feasibility, hard_constraint=(not args.soft_constr))
-    xct.make_model(X_train, y_train)
+    fct = FCT_MIP(args.depth, data_handler, min_in_leaf=args.min_in_leaves, leaf_accuracy=m, only_feasibility=args.feasibility, hard_constraint=(not args.soft_constr))
+    fct.make_model(X_train, y_train)
 
-    res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, mip_focus=args.mip_focus, mip_heuristics=args.mip_heuristics, log_file=f"{logfile_base}.log", verbose=args.verbose)
+    res = fct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, mip_focus=args.mip_focus, mip_heuristics=args.mip_heuristics, log_file=f"{logfile_base}.log", verbose=args.verbose)
     now_time = time.time()
 
-    status = xct.get_humanlike_status()
+    status = fct.get_humanlike_status()
 
     if res:
-        acc = xct.model.getObjective().getValue()
+        acc = fct.model.getObjective().getValue()
 
-        ctx = xct.get_base_context()
-        problem, diff = util.check_leaf_assignment(xct)
+        ctx = fct.get_base_context()
+        problem, diff = util.check_leaf_assignment(fct)
         misassigned = np.abs(diff).sum()/2
         ctx["n_misassigned"] = misassigned
         if problem:
@@ -84,7 +84,7 @@ while high - low > args.required_prec:
         with open(f"{logfile_base}_{m*100:.2f}.ctx", "wb") as f:
             pickle.dump(ctx, f)
 
-        best_model = xct.model
+        best_model = fct.model
         print(f"Found a solution with {acc*100} leaf accuracy - {status}")
 
     print(f"Attempted {m*100} accuracy - {res} in {(now_time - last_time):.2f} sec")

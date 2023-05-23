@@ -1,6 +1,6 @@
 import numpy as np
 from .ClassificationTree import ClassificationTree
-from .XCT_MIP import XCT_MIP
+from .FCT_MIP import FCT_MIP
 
 class TreeGenerator:
     def __init__(self, data_handler):
@@ -37,7 +37,7 @@ class TreeGenerator:
             with open(sol_file) as f:
                 branch_nodes = len([line for line in f if "b[" == line[:2]])
                 depth = self.__depth_from_branchnodes(branch_nodes)
-        mip_model = XCT_MIP(depth, self.data_h)
+        mip_model = FCT_MIP(depth, self.data_h)
         mip_model.load_sol(sol_file)
         return self.make_from_matrices(mip_model.vars["a"].X, mip_model.vars["b"].X, mip_model.vars["class_in_leaf"].X, depth)
 

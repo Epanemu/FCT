@@ -4,9 +4,9 @@ import os
 import pickle
 import argparse
 
-from xct_nn.XCT_MIP import XCT_MIP
-from xct_nn.DataHandler import DataHandler
-from xct_nn.UtilityHelper import UtilityHelper
+from fct_nn.FCT_MIP import FCT_MIP
+from fct_nn.DataHandler import DataHandler
+from fct_nn.UtilityHelper import UtilityHelper
 
 parser = argparse.ArgumentParser()
 # data parameters
@@ -45,19 +45,19 @@ util = UtilityHelper(data_handler)
 logfile_base = args.results_dir + f"/run{args.random_seed}"
 
 print(f"Creating model")
-xct = XCT_MIP(args.depth, data_handler, min_in_leaf=args.min_in_leaves, hard_constraint=(not args.soft_constr))
-xct.make_model(X_train, y_train)
+fct = FCT_MIP(args.depth, data_handler, min_in_leaf=args.min_in_leaves, hard_constraint=(not args.soft_constr))
+fct.make_model(X_train, y_train)
 
 print("Optimizing the model...")
-res = xct.optimize(time_limit=args.time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, mip_focus=args.mip_focus, mip_heuristics=args.mip_heuristics, log_file=f"{logfile_base}.log", verbose=args.verbose)
+res = fct.optimize(time_limit=args.time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, mip_focus=args.mip_focus, mip_heuristics=args.mip_heuristics, log_file=f"{logfile_base}.log", verbose=args.verbose)
 
-status = xct.get_humanlike_status()
+status = fct.get_humanlike_status()
 
 if res:
-    acc = xct.model.getObjective().getValue()
+    acc = fct.model.getObjective().getValue()
 
-    ctx = xct.get_base_context()
-    problem, diff = util.check_leaf_assignment(xct)
+    ctx = fct.get_base_context()
+    problem, diff = util.check_leaf_assignment(fct)
     misassigned = np.abs(diff).sum()/2
     ctx["n_misassigned"] = misassigned
     if problem:
@@ -67,10 +67,10 @@ if res:
     with open(f"{logfile_base}.ctx", "wb") as f:
         pickle.dump(ctx, f)
 
-    xct.model.write(f"{logfile_base}.sol")
+    fct.model.write(f"{logfile_base}.sol")
     print(f"Found a solution with {acc*100} leaf accuracy - {status}")
 else:
     print(f"Did not find a solution - {status}")
     if status == "INF":
-        xct.model.computeIIS()
-        xct.model.write(f"{logfile_base}_{status}.ilp")
+        fct.model.computeIIS()
+        fct.model.write(f"{logfile_base}_{status}.ilp")

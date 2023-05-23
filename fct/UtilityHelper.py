@@ -3,9 +3,9 @@ import numpy as np
 import pickle
 import os
 
-from xct_nn.TreeGenerator import TreeGenerator
-from xct_nn.DataHandler import DataHandler
-from xct_nn.XCT_Extended import XCT_Extended
+from .TreeGenerator import TreeGenerator
+from .DataHandler import DataHandler
+from .FCT_Extended import FCT_Extended
 
 class UtilityHelper:
     def __init__(self, data_handler):
@@ -52,13 +52,13 @@ class UtilityHelper:
         X = self.data_h.unnormalize(self.data_h.normalize(X))
         return tree.compute_leaf_accuracy(X, y, soft_limit=soft_limit)
 
-    def check_leaf_assignment(self, xct_mip):
-        tree = self.tree_gen.make_from_context(xct_mip.get_base_context())
+    def check_leaf_assignment(self, fct_mip):
+        tree = self.tree_gen.make_from_context(fct_mip.get_base_context())
         _ = tree.compute_leaf_accuracy(self.used_X, self.used_y)
         # checking counts is sufficient for my case
-        if "points_in_leaf" not in xct_mip.vars:
-            return False, np.zeros_like(xct_mip.vars["point_assigned"].X)
-        diff = xct_mip.vars["points_in_leaf"].X.round(0) - tree.leaf_totals
+        if "points_in_leaf" not in fct_mip.vars:
+            return False, np.zeros_like(fct_mip.vars["point_assigned"].X)
+        diff = fct_mip.vars["points_in_leaf"].X.round(0) - tree.leaf_totals
         return any(diff != 0), diff
 
     def n_soft_constrained(self, ctx):
@@ -161,13 +161,13 @@ def get_extended_stats(ctx_path, data_h, sklearn_warm=False, soft_limit=0):
     with open(extended_path, "rb") as f:
         ext_ctx = pickle.load(f)
 
-    ext_tree = XCT_Extended.create_from_context(ext_ctx)
+    ext_tree = FCT_Extended.create_from_context(ext_ctx)
     if sklearn_warm:
         skl_ext_path = ctx_path[:-4] + "_sklearn_ext.ctx"
         if os.path.exists(skl_ext_path):
             with open(skl_ext_path, "rb") as f:
                 skl_ctx = pickle.load(f)
-            start_tree = XCT_Extended.create_from_context(skl_ctx)
+            start_tree = FCT_Extended.create_from_context(skl_ctx)
         else:
             sklearn_warm = False
 

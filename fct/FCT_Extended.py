@@ -6,9 +6,9 @@ except ImportError:
     print("XGBoost or skopt is not available, related functions will fail.")
 import numpy as np
 
-from xct_nn.DataHandler import DataHandler
+from .DataHandler import DataHandler
 
-class XCT_Extended:
+class FCT_Extended:
 
     def __init__(self, classification_tree, data_handler, seed=0, cv_folds=3, search_iterations=100, context=None):
         self.param_distributions = {
@@ -30,7 +30,7 @@ class XCT_Extended:
             # "num_class": Categorical([n_classes]),
         }
         if context is not None:
-            self.__xct = context["classification_tree"]
+            self.__fct = context["classification_tree"]
             dh_ctx = context["data_h_setup"]
             data_h = DataHandler(dh_ctx["path"], dh_ctx["round_limit"])
             data_h.get_training_data(dh_ctx["split_seed"], dh_ctx["test_size"], dh_ctx["limit"], True)
@@ -51,7 +51,7 @@ class XCT_Extended:
             return
 
         classification_tree.reduce_tree(data_handler)
-        self.__xct = classification_tree
+        self.__fct = classification_tree
         self.__data_h = data_handler
 
         X, y = data_handler.used_data # USE ALL TRAINING DATA HERE? currently not, to measure up to previous works
@@ -62,7 +62,7 @@ class XCT_Extended:
             # if the leaf is not perfectly classified:
             if np.any(y[indices] != pred):
                 classes, counts = np.unique(y[indices], return_counts=True)
-                if len(classes) < self.__xct.n_classes:
+                if len(classes) < self.__fct.n_classes:
                     print("A leaf lacks points of one class, skipped")
                     print(data_handler.get_setup(), leaf_i)
                     print(f"Has classes {classes}, is classified as {pred}")
@@ -86,18 +86,18 @@ class XCT_Extended:
         # assigned = np.empty_like(y, dtype=int)
         correct = np.empty_like(y, dtype=bool)
         X_reduced = self.__data_h.unnormalize(self.__data_h.normalize(X))
-        for leaf_i, indices, pred in self.__xct.get_leafs_with_data(X):
+        for leaf_i, indices, pred in self.__fct.get_leafs_with_data(X):
             # assigned[indices] = leaf_i
             if leaf_i in self.__models_in_leaves:
                 correct[indices] = y[indices] == self.__models_in_leaves[leaf_i].predict(X[indices])
             else:
                 correct[indices] = y[indices] == pred
-        leaf_acc, _ = self.__xct.compute_leaf_accuracy_reduced(X, y, soft_limit=soft_limit)
+        leaf_acc, _ = self.__fct.compute_leaf_accuracy_reduced(X, y, soft_limit=soft_limit)
         return leaf_acc, correct.mean()
 
     def get_context(self):
         return {
-            "classification_tree": self.__xct,
+            "classification_tree": self.__fct,
             "data_h_setup": self.__data_h.get_setup(),
             "leaf_params": self.__params_in_leaves,
             "leaf_models": self.__models_in_leaves,
@@ -105,4 +105,4 @@ class XCT_Extended:
 
     @staticmethod
     def create_from_context(ctx):
-        return XCT_Extended(None, None, context=ctx)
+        return FCT_Extended(None, None, context=ctx)
