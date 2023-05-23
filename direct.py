@@ -21,13 +21,12 @@ parser.add_argument("-v", "--verbose",  action="store_true", help="Print model a
 
 # model parameters
 parser.add_argument("-soft", "--soft_constr", action="store_true", help="Go with soft constraint in leaves") # not used in the paper
-parser.add_argument("-init", "--init_type", default="warmstart", help="How should the values of previous tree be used? [warmstart, hint, fix_values]")
 parser.add_argument("-d", "--depth", type=int, default=4, help="Final depth of the tree")
 parser.add_argument("-lmin", "--min_in_leaves", type=int, default=50, help="Minimal number of points in each leaf")
 parser.add_argument("-max", "--max_data", type=int, default=10_000, help="Limit on data inputed into the model")
 
 # optimization parameters
-parser.add_argument("-t", "--time_limit", type=int, default=8*3600, help="Total time limit. Each depth has double of the previous time limit")
+parser.add_argument("-t", "--time_limit", type=int, default=8*3600, help="Total time limit for optimization [s]")
 parser.add_argument("-m", "--memory_limit", type=int, default=None, help="Memory limit for gurobi [GB]")
 parser.add_argument("-thr", "--n_threads", type=int, default=8, help="Number of threads for gurobi to use")
 parser.add_argument("-focus", "--mip_focus", type=int, default=1, help="Value of MIPFocus parameter for Gurobi")
@@ -44,43 +43,34 @@ X_train, y_train = data_handler.get_training_data(split_seed=args.random_seed, t
 util = UtilityHelper(data_handler)
 
 logfile_base = args.results_dir + f"/run{args.random_seed}"
-time_limit = args.time_limit / (2**args.depth - 1)
 
-values = None
-for depth in range(1, args.depth+1):
-    print(f"Creating model with depth {depth}...")
-    xct = XCT_MIP(depth, data_handler, min_in_leaf=args.min_in_leaves, hard_constraint=(not args.sot_constr))
-    xct.make_model(X_train, y_train)
+print(f"Creating model")
+xct = XCT_MIP(args.depth, data_handler, min_in_leaf=args.min_in_leaves, hard_constraint=(not args.soft_constr))
+xct.make_model(X_train, y_train)
 
-    print("Optimizing the model...")
-    initialize = args.init_type if values is not None else None
-    res = xct.optimize(time_limit=time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, mip_focus=args.mip_focus, mip_heuristics=args.mip_heuristics, log_file=f"{logfile_base}_d{depth}.log", initialize=initialize, values=values, verbose=args.verbose)
+print("Optimizing the model...")
+res = xct.optimize(time_limit=args.time_limit, mem_limit=args.memory_limit, n_threads=args.n_threads, mip_focus=args.mip_focus, mip_heuristics=args.mip_heuristics, log_file=f"{logfile_base}.log", verbose=args.verbose)
 
-    time_limit *= 2 # double the time limit after each depth
-    status = xct.get_humanlike_status()
+status = xct.get_humanlike_status()
 
-    if res:
-        acc = xct.model.getObjective().getValue()
+if res:
+    acc = xct.model.getObjective().getValue()
 
-        ctx = xct.get_base_context()
-        problem, diff = util.check_leaf_assignment(xct)
-        misassigned = np.abs(diff).sum()/2
-        ctx["n_misassigned"] = misassigned
-        if problem:
-            print(f"Problem with solution: {misassigned} points misassigned")
-            print("Differences:", diff)
+    ctx = xct.get_base_context()
+    problem, diff = util.check_leaf_assignment(xct)
+    misassigned = np.abs(diff).sum()/2
+    ctx["n_misassigned"] = misassigned
+    if problem:
+        print(f"Problem with solution: {misassigned} points misassigned")
+        print("Differences:", diff)
 
-        with open(f"{logfile_base}_d{depth}.ctx", "wb") as f:
-            pickle.dump(ctx, f)
+    with open(f"{logfile_base}.ctx", "wb") as f:
+        pickle.dump(ctx, f)
 
-        # adding depth would not work with fixing the upper levels and does not help much in other cases
-        values = ctx["a"], ctx["b"]
-
-        xct.model.write(f"{logfile_base}_d{depth}.sol")
-        print(f"At depth {depth} found a solution with {acc*100} leaf accuracy - {status}")
-    else:
-        print(f"At depth {depth} did not find a solution - {status}")
-        if status == "INF":
-            xct.model.computeIIS()
-            xct.model.write(f"{logfile_base}_{status}.ilp")
-        break
+    xct.model.write(f"{logfile_base}.sol")
+    print(f"Found a solution with {acc*100} leaf accuracy - {status}")
+else:
+    print(f"Did not find a solution - {status}")
+    if status == "INF":
+        xct.model.computeIIS()
+        xct.model.write(f"{logfile_base}_{status}.ilp")
