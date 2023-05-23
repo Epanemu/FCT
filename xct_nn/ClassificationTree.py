@@ -28,6 +28,7 @@ class ClassificationTree:
     def reduce_tree(self, data_handler):
         # reduces the complete binary tree to an equivalent representation with less leaf nodes
         # by removing decisions that lead to no splitting of values (i. e. threshold is out of relevant bounds)
+        #   (this is not necessary, since we would get to the same result just by removing leaves without points in training data)
         # and by combining neighbouring leafs that lead to the same class into a single leaf
         # also remove leafs without any corresponding points in the training set
         X, y = data_handler.used_data
@@ -131,7 +132,11 @@ class ClassificationTree:
                     thresh = self.__model_context['b'][mapped[0]] # decisions can be mapped to a single value only
                 else:
                     thresh = self.__thresholds[mapped[0]]
-                dot.node(f"bra{i}", f"[{self.__decision_features[mapped[0]]}] ? {thresh:.5g}", tooltip="tmp", shape="rect")
+                var = self.__decision_features[mapped[0]]
+                if data_handler is not None:
+                    thresh = self.__thresholds[mapped[0]]
+                    var = data_handler.feature_names[var]
+                dot.node(f"bra{i}", f"[{var}] ? {thresh:.5g}", tooltip="tmp", shape="rect")
                 if i > 0:
                     edge_desc = f"<" if i == l_child[parents[i]] else f"≥"
                     dot.edge(f"bra{parents[i]}", f"bra{i}", edge_desc)
@@ -141,12 +146,17 @@ class ClassificationTree:
                     acc = self.__accuracy_context["reduced_leaf_acc"][i]
                     points_total = self.__accuracy_context["reduced_leaf_tot"][i]
                     bellow_thresh = self.__accuracy_context["reduced_bellow_threshold"]
+                    correct_total = None
                 else:
                     points_total = sum(self.__accuracy_context['leaf_totals'][m - self.__n_decision_nodes + 1] for m in mapped)
                     correct_total = sum(self.__accuracy_context['leaf_corr'][m - self.__n_decision_nodes + 1] for m in mapped)
                     acc = correct_total / points_total if points_total > 0 else 1
                 desc =  f"{points_total} [{acc*100:.3g}%]" if bellow_thresh else f"{points_total} ({acc*100:.3g}%)"
                 c = self.__leaf_assignments[mapped[0] - self.__n_decision_nodes + 1]
+                if data_handler is not None:
+                    if correct_total is not None:
+                        desc = f"{acc*100:.3g}% ({correct_total} / {points_total})"
+                    desc += f" \nclass {data_handler.class_mapping[c]}"
                 dot.node(f"dec{i}", desc, tooltip="tmp", shape="circle", color="red" if c == 1 else "green")
                 edge_desc = f"<" if i == l_child[parents[i]] else f"≥"
                 dot.edge(f"bra{parents[i]}", f"dec{i}", edge_desc)
@@ -216,17 +226,19 @@ class ClassificationTree:
 
     def compute_leaf_accuracy(self, X, y, soft_limit=0):
         # computes everything at once...
-        decisions = X[:, self.__decision_features] < self.__thresholds
+        # takes too much memory, tried to make it lighter
+        # decisions = X[:, self.__decision_features] < self.__thresholds
         indices = np.zeros_like(y, dtype=int)
-        i_vals = np.zeros((self.__n_branch_nodes,), dtype=int)
+        # i_vals = np.zeros((self.__n_branch_nodes,), dtype=int)
         selector = np.arange(y.shape[0])
         for _ in range(self.__model_context["depth"]):
-            correct = decisions[selector, indices]
-            for i in range(indices.min(), indices.max()+1):
-                i_vals[i] += (indices == i).sum()
+            # correct = decisions[selector, indices]
+            correct = X[np.arange(indices.shape[0]), self.__decision_features[indices]] < self.__thresholds[indices]
+            # for i in range(indices.min(), indices.max()+1):
+            #     i_vals[i] += (indices == i).sum()
             indices[correct] = indices[correct]*2 + 1
             indices[~correct] = indices[~correct]*2 + 2
-        self.__accuracy_context["node_visits"] = i_vals
+        # self.__accuracy_context["node_visits"] = i_vals
 
         leaf_indices = indices - self.__n_branch_nodes
         tot_corr = self.__leaf_assignments[leaf_indices] == y
@@ -262,16 +274,28 @@ class ClassificationTree:
         dot = Digraph(comment="Decision tree")
 
         # for d in range(depth):
-        dot.node("bra0", f"[{self.__decision_features[0]}]", tooltip="tmp", shape="rect")
+        if show_normalized_thresholds:
+            thresh = self.__model_context['b'][0]
+        else:
+            thresh = self.__thresholds[0]
+        var = self.__decision_features[0]
+        if data_handler is not None:
+            thresh = self.__thresholds[0]
+            var = data_handler.feature_names[var]
+        dot.node("bra0", f"[{var}] ? {thresh:.5g}", tooltip="tmp", shape="rect")
         for node in range(1, self.__n_branch_nodes):
-            dot.node(f"bra{node}", f"[{self.__decision_features[node]}]", tooltip="tmp", shape="rect")
-
             parent_i = (node-1) // 2
             if show_normalized_thresholds:
-                thresh = self.__model_context['b'][parent_i]
+                thresh = self.__model_context['b'][node]
             else:
-                thresh = self.__thresholds[parent_i]
-            edge_desc = f"< {thresh:.2f}" if node % 2 == 1 else f"≥ {thresh:.2f}"
+                thresh = self.__thresholds[node]
+            var = self.__decision_features[node]
+            if data_handler is not None:
+                thresh = self.__thresholds[node]
+                var = data_handler.feature_names[var]
+            dot.node(f"bra{node}", f"[{var}] ? {thresh:.5g}", tooltip="tmp", shape="rect")
+
+            edge_desc = f"<" if node % 2 == 1 else f"≥"
             dot.edge(f"bra{parent_i}", f"bra{node}", edge_desc)
 
         offset = self.__n_branch_nodes - 1
@@ -280,15 +304,16 @@ class ClassificationTree:
                 desc =  f"{self.__accuracy_context['leaf_totals'][node]} [{self.__accuracy_context['leaf_acc'][node]*100:.3g}%]"
             else:
                 desc =  f"{self.__accuracy_context['leaf_totals'][node]} ({self.__accuracy_context['leaf_acc'][node]*100:.3g}%)"
+            if data_handler is not None:
+                if self.__accuracy_context['leaf_corr'] is not None:
+                    desc = f"{self.__accuracy_context['leaf_acc'][node]*100:.3g}% ({self.__accuracy_context['leaf_corr'][node]} / {self.__accuracy_context['leaf_totals'][node]})"
+                desc += f" \nclass {data_handler.class_mapping[c]}"
+
             dot.node(f"dec{node}", desc, tooltip="tmp", shape="circle", color="red" if c == 1 else "green")#, style="filled")
             # dot.node(f"dec{node}", f"{data_handler.class_mapping[c]}", tooltip="tmp", shape="circle", color="red" if c == 1 else "green", style="filled")
 
             parent_i = (node+offset) // 2
-            if show_normalized_thresholds:
-                thresh = self.__model_context['b'][parent_i]
-            else:
-                thresh = self.__thresholds[parent_i]
-            edge_desc = f"< {thresh:.2f}" if node % 2 == 0 else f"≥ {thresh:.2f}"
+            edge_desc = f"<" if node % 2 == 0 else f"≥"
             dot.edge(f"bra{parent_i}", f"dec{node}", edge_desc)
 
         dot.format = "pdf"
