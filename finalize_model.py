@@ -1,7 +1,7 @@
 # script that extends the original model by adding XGBoost to their leaves
-from fct_nn.DataHandler import DataHandler
-from fct_nn.FCT_Extended import FCT_Extended
-from fct_nn.TreeGenerator import TreeGenerator
+from fct.DataHandler import DataHandler
+from fct.FCT_Extended import FCT_Extended
+from fct.TreeGenerator import TreeGenerator
 import pickle
 import os
 import sys
