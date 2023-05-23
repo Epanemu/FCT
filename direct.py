@@ -4,9 +4,9 @@ import os
 import pickle
 import argparse
 
-from fct_nn.FCT_MIP import FCT_MIP
-from fct_nn.DataHandler import DataHandler
-from fct_nn.UtilityHelper import UtilityHelper
+from fct.FCT_MIP import FCT_MIP
+from fct.DataHandler import DataHandler
+from fct.UtilityHelper import UtilityHelper
 
 parser = argparse.ArgumentParser()
 # data parameters

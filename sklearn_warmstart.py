@@ -5,10 +5,10 @@ import argparse
 import numpy as np
 from sklearn import tree as skltree
 
-from fct_nn.FCT_MIP import FCT_MIP
-from fct_nn.DataHandler import DataHandler
-from fct_nn.TreeGenerator import TreeGenerator
-from fct_nn.UtilityHelper import UtilityHelper
+from fct.FCT_MIP import FCT_MIP
+from fct.DataHandler import DataHandler
+from fct.TreeGenerator import TreeGenerator
+from fct.UtilityHelper import UtilityHelper
 
 parser = argparse.ArgumentParser()
 # data parameters
