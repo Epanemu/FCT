@@ -1,132 +1,112 @@
-import colorsys
 import matplotlib
-from matplotlib.patches import Rectangle, Patch
+from matplotlib.patches import Patch
 from matplotlib.lines import Line2D
 import seaborn as sns
 
 sns.set_style("darkgrid")
 matplotlib.rcParams.update({'errorbar.capsize': 2})
 
-from copy import deepcopy
 
-def scale_lightness(rgb, scale_l):
-    # convert rgb to hls
-    h, l, s = colorsys.rgb_to_hls(*rgb[:3])
-    # manipulate h, l, s values and return as rgb
-    return colorsys.hls_to_rgb(h, min(0.7, l * scale_l), s)
-
-def plot_in_axis(ax, vals, name, color, mode="minmax", show_train=True, show_test=True, bar_width=0.002, show_bounds=True, fixed_lims=False):
-    # ax.scatter(vals["TrainAcc"], vals["TrainLeafAcc"], label=f"{name} - train", color=color)
-    # ax.scatter(vals["TestAcc"], vals["TestLeafAcc"], label=f"{name} - test", marker="D", color=color)
-
-    # ax.scatter([vals["TrainAcc"].mean()], [vals["TrainLeafAcc"].mean()], label=f"{name} - train", markersize=15, color=color)
-    # ax.scatter([vals["TestAcc"].mean()], [vals["TestLeafAcc"].mean()], label=f"{name} - test", marker="D", markersize=15, color=color)
-
-    # ax.errorbar([vals["TrainAcc"].mean()], [vals["TrainLeafAcc"].mean()],
-    #             xerr=vals["TrainAcc"].std(), yerr=vals["TrainLeafAcc"].std(), capthick=20,
-    #             label=f"{name} - train",marker="o", markersize=8, color=color)
-    # ax.errorbar([vals["TestAcc"].mean()], [vals["TestLeafAcc"].mean()],
-    #             xerr=vals["TestAcc"].std(), yerr=vals["TestLeafAcc"].std(),
-    #             label=f"{name} - test", marker="D", markersize=8, color=color)
-
-    if mode == "std":
-        if show_train:
-            ax.errorbar([vals["TrainAcc"].mean()], [vals["TrainLeafAcc"].mean()],
-                        xerr=vals["TrainAcc"].std(), yerr=vals["TrainLeafAcc"].std(), capsize=2,
-                        label=f"{name} - train", marker="o", markersize=8,
-                        markerfacecolor=(1,1,1,0), markeredgecolor=color, color=color)
-        if show_test:
-            ax.errorbar([vals["TestAcc"].mean()], [vals["TestLeafAcc"].mean()],
-                        xerr=vals["TestAcc"].std(), yerr=vals["TestLeafAcc"].std(), capsize=2,
-                        label=f"{name} - test", marker="D", markersize=8,
-                        markerfacecolor=(1,1,1,0), markeredgecolor=color, color=color)
-        bar_y = vals["TrainLeafAcc"].mean()
-        bar_x = vals["TrainAcc"].mean() - bar_width/2
-        u_bound = vals["ObjBound"].mean()
-    elif mode == "minmax":
-        if show_train:
-            x = vals["TrainAcc"].median()
-            y = vals["TrainLeafAcc"].median()
-            max_x, min_x = vals["TrainAcc"].max(), vals["TrainAcc"].min()
-            max_y, min_y = vals["TrainLeafAcc"].max(), vals["TrainLeafAcc"].min()
-            ax.errorbar([x], [y], xerr=[[x-min_x], [max_x-x]], yerr=[[y-min_y],[max_y-y]],
-                        capsize=2, label=f"{name} - train", marker="o", markersize=8,
-                        markerfacecolor=(1,1,1,0), markeredgecolor=color, color=color)
-        if show_test:
-            x = vals["TestAcc"].median()
-            y = vals["TestLeafAcc"].median()
-            max_x, min_x = vals["TestAcc"].max(), vals["TestAcc"].min()
-            max_y, min_y = vals["TestLeafAcc"].max(), vals["TestLeafAcc"].min()
-            ax.errorbar([x], [y], xerr=[[x-min_x], [max_x-x]], yerr=[[y-min_y],[max_y-y]],
-                        capsize=2, label=f"{name} - test", marker="D", markersize=8,
-                        markerfacecolor=(1,1,1,0), markeredgecolor=color, color=color)
-        bar_y = vals["TrainLeafAcc"].max()
-        bar_x = vals["TrainAcc"].median() - bar_width/2
-        u_bound = vals["ObjBound"].median()
-
-    if show_train and show_bounds:
-        ax.add_patch(Rectangle((bar_x, bar_y), bar_width, u_bound-bar_y,
-             edgecolor = scale_lightness(color, 1.5),
-             linestyle = 'solid',
-             hatch='///',
-             # facecolor = scale_lightness(color, 2),
-             fill=False,
-             lw=1))
-
-    if fixed_lims:
-        ax.set_xlim((0.45, 1.05))
-        ax.set_ylim((-0.05, 1.05))
-
-
-def plot_xgb_bar(ax, vals, color="k", show_train=True, show_test=True, mode="std"):
-    if mode == "std":
-        train = vals["TrainAcc"].mean()
-        test = vals["TestAcc"].mean()
-    elif mode == "minmax":
-        train = vals["TrainAcc"].median()
-        test = vals["TestAcc"].median()
-
-    y = ax.get_ylim()
-    if show_train:
-        ax.plot([train, train], y, linestyle='dotted', color=color)
-    if show_test:
-        ax.plot([test, test], y, linestyle='dashed', color=color)
-    ax.set_ylim(y)
-
-
-def add_labels(ax, title):
-    ax.set_title(title)
-    ax.set_xlabel("Accruacy of model")
-    ax.set_ylabel("Lowest (soft) accuracy in a leaf")
-
-
-def add_legend(ax, labels, colors, mode="std", show_train=True, show_test=True, show_xgb=True):
-    err_label = "Standard deviation" if mode=="std" else "Min - Max range"
-    acc_measure = "Mean" if mode=="std" else "Median"
-    gap_label = "Mean objective gap" if mode=="std" else "Best objective gap"
-    handles, _ = ax.get_legend_handles_labels()
-    errorbar_handle = ax.errorbar([], [], xerr=1, yerr=1, capsize=2, linestyle="",
-                label=err_label, marker="", color="k")
+def set_difficulty_legend(ax, labels, colors, anchor):
+    errorbar_handle = ax.errorbar([], [], xerr=1, yerr=1, capsize=2, uplims=True, lolims=True, xuplims=True, xlolims=True, linestyle="",
+                label="Standard deviation", marker="", color="k")
+    errorbar_dotted = ax.errorbar([], [], xerr=1, yerr=1, capsize=2, uplims=True, lolims=True, xuplims=True, xlolims=True, linestyle="",
+                label="Standard deviation", marker="", color="k")
+    for b in errorbar_dotted[2]:
+        b.set_linestyle("dotted")
 
     legend_elements = []
-    if show_train:
-        legend_elements.append(
-            Line2D([0], [0], marker='o', color=(1,1,1,0), label=f'{acc_measure} Train accuracy',
-                          markeredgecolor="k", markerfacecolor=None, markersize=10))
-    if show_test:
-        legend_elements.append(
-            Line2D([0], [0], marker="D", color=(1,1,1,0), label=f'{acc_measure} Test accuracy',
-                          markeredgecolor="k", markerfacecolor=None, markersize=10))
+    legend_elements.append(Patch(visible=False, label='Hybrid trees'))
+    legend_elements.append(
+        Line2D([0], [0], marker="D", color=(1,1,1,0), label=f'Mean Proposed',
+                        markeredgecolor="k", markerfacecolor=None, markersize=10))
+    legend_elements.append(
+        Line2D([0], [0], marker="x", color=(1,1,1,0), label=f'Mean CART',
+                        markeredgecolor="k", markerfacecolor=None, markersize=10))
     legend_elements.append(errorbar_handle)
+    # legend_elements.append(Line2D([0], [0], linestyle='dotted', color="k", label=f'non-extended model'))
+    legend_elements.append(Patch(visible=False)),  # spacer
 
-    if show_train:
-        legend_elements.append(Patch(hatch='///', edgecolor="k", facecolor=(1,1,1,0), label=gap_label))
-        if show_xgb:
-            legend_elements.append(Line2D([0], [0], linestyle='dotted', color="k", label=f'XGBoost Train accuracy'))
-    if show_test and show_xgb:
-        legend_elements.append(Line2D([0], [0], linestyle='dashed', color="k", label=f'XGBoost accuracy'))
+    legend_elements.append(Line2D([0], [0], linestyle='dashed', color="k", label=f'Mean XGBoost'))
+    legend_elements.append(Patch(visible=False)),  # spacer
 
-    legend_elements += [Patch(visible=False),  # spacer
-    ] + [Patch(facecolor=c, edgecolor=(1,1,1,0), label=l) for c, l in zip(colors, labels)]
+    legend_elements += [Patch(facecolor=c, edgecolor=(1,1,1,0), label=l) for c, l in zip(colors, labels)]
 
-    ax.legend(handles=legend_elements)
+    # ax.legend(handles=legend_elements, loc="lower center", bbox_to_anchor=(1.1, -0.15), ncol=len(legend_elements))
+    leg = ax.legend(handles=legend_elements, loc="center right", bbox_to_anchor=anchor)
+    # leg = ax.legend(handles=legend_elements, loc="center right", bbox_to_anchor=anchor, ncol=2)
+    style_legend_titles_by_setting_position(leg, bold=True)
+
+
+def set_legend(ax, labels, colors, anchor, ncol=1):
+    errorbar_handle = ax.errorbar([], [], xerr=1, yerr=1, capsize=2, uplims=True, lolims=True, xuplims=True, xlolims=True, linestyle="",
+                label="Standard deviation", marker="", color="k")
+    errorbar_dotted = ax.errorbar([], [], xerr=1, yerr=1, capsize=2, uplims=True, lolims=True, xuplims=True, xlolims=True, linestyle="",
+                label="Standard deviation", marker="", color="k")
+    for b in errorbar_dotted[2]:
+        b.set_linestyle("dotted")
+
+    legend_elements = []
+    legend_elements.append(Patch(visible=False, label='Hybrid tree'))
+    legend_elements.append(
+        Line2D([0], [0], marker="D", color=(1,1,1,0), label=f'Mean OOS Accuracy',
+                        markeredgecolor="k", markerfacecolor=None, markersize=10))
+    legend_elements.append(errorbar_handle)
+    legend_elements.append(Patch(visible=False, label='Low-depth tree'))
+    legend_elements.append(
+        Line2D([0], [0], marker="s", color=(1,1,1,0), label=f'Mean OOS Accuracy',
+                        markeredgecolor="k", markerfacecolor=None, markersize=10))
+    legend_elements.append(errorbar_dotted)
+    # legend_elements.append(Line2D([0], [0], linestyle='dotted', color="k", label=f'non-extended model'))
+    legend_elements.append(Patch(visible=False)),  # spacer
+
+    legend_elements.append(Line2D([0], [0], linestyle='dashed', color="k", label=f'Mean XGBoost'))
+
+    legend_elements += [Patch(facecolor=c, edgecolor=(1,1,1,0), label=l) for c, l in zip(colors, labels)]
+
+    # ax.legend(handles=legend_elements, loc="lower center", bbox_to_anchor=(1.1, -0.15), ncol=len(legend_elements))
+    leg = ax.legend(handles=legend_elements, loc="center right", bbox_to_anchor=anchor, ncol=ncol)
+    style_legend_titles_by_setting_position(leg, bold=True)
+
+# source: https://stackoverflow.com/questions/24787041/multiple-titles-in-legend-in-matplotlib
+def style_legend_titles_by_setting_position(leg, bold=False):
+    """ Style legend "titles"
+
+    A legend entry can be marked as a title by setting visible=False. Titles
+    get left-aligned and optionally bolded.
+    """
+    # matplotlib.offsetbox.HPacker unconditionally adds a pixel of padding
+    # around each child.
+    hpacker_padding = 2
+
+    for handle, label in zip(leg.legendHandles, leg.texts):
+        if not handle.get_visible():
+            # See matplotlib.legend.Legend._init_legend_box()
+            widths = [leg.handlelength, leg.handletextpad]
+            offset_points = sum(leg._fontsize * w for w in widths)
+            offset_pixels = leg.figure.canvas.get_renderer().points_to_pixels(offset_points) + hpacker_padding
+            label.set_position((-offset_pixels, 0))
+            if bold:
+                label.set_fontweight('bold')
+
+def set_labels(ax, title, xlabel="Accruacy of model", ylabel="Leaf accuracy (Minimal accuracy in a single leaf)"):
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+
+def show_xgb(ax, val, color="k"):
+    ylims = ax.get_ylim()
+    ax.plot([val, val], ylims, linestyle='dashed', color=color)
+    ax.set_ylim(ylims)
+
+def plot_low_depth(ax, vals, leaf_vals, color):
+    _, _, bars = ax.errorbar([vals.mean()], [leaf_vals.mean()],
+        xerr=vals.std(), yerr=leaf_vals.std(), capsize=2, marker="s", markersize=8,
+        markerfacecolor=(1,1,1,0), markeredgecolor=color, color=color)
+    for b in bars:
+        b.set_linestyle("dotted")
+
+def plot_hybrid(ax,vals, leaf_vals, color):
+    ax.errorbar([vals.mean()], [leaf_vals.mean()],
+        xerr=vals.std(), yerr=leaf_vals.std(), capsize=4, marker="D", markersize=8,
+        markerfacecolor=(1,1,1,0), markeredgecolor=color, color=color)
