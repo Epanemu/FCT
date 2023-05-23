@@ -1,33 +1,34 @@
 try:
     from xgboost import XGBClassifier
-    from sklearn.model_selection import RandomizedSearchCV
+    from skopt import BayesSearchCV
+    from skopt.space import Real, Categorical, Integer
 except ImportError:
-    print("XGBoost and/or sklearn is not available, related functions will fail.")
+    print("XGBoost or skopt is not available, related functions will fail.")
 import numpy as np
 
 from xct_nn.DataHandler import DataHandler
 
 class XCT_Extended:
-    param_distributions = {
-        # "booster": ["gbtree", "gblinear", "dart"], # gblinear is not a tree model
-        "booster": ["gbtree", "dart"],
-        "max_depth": [3, 5, 7, 9],
-        "min_child_weight": [0.1, 0.5, 1, 2, 5],
-        "max_leaves": [0, 5, 10, 15],
-        "max_delta_step": [0, 1, 5], # not needed
-        "min_split_loss": [0, 0.01, 0.05, 0.1],
-        # "reg_alpha": [0] # L1 regularization
-        # "reg_lambda": [1] # L2 regularization
-        "n_estimators": [10, 20, 50, 100, 200], # don't want too many to be able to compute...
-
-        # for binary
-        "objective": ["binary:logistic"],
-        # for multiclass: (do not use it yet, benchmark datasets are all binary)
-        # "objective": ["multi:softmax"],
-        # "num_class": [n_classes],
-    }
 
     def __init__(self, classification_tree, data_handler, seed=0, cv_folds=3, search_iterations=100, context=None):
+        self.param_distributions = {
+            "max_depth": Integer(1, 7),
+            "min_child_weight": Integer(1, 1e2, prior="log-uniform"),
+            "learning_rate": Real(1e-5, 0.7, prior="log-uniform"),
+            "subsample": Real(0.5, 1),
+            "colsample_bylevel": Real(0.5, 1),
+            "colsample_bytree": Real(0.5, 1),
+            "gamma": Real(1e-8, 7, prior="log-uniform"), # min_split_loss
+            "reg_alpha": Real(1e-8, 1e2, prior="log-uniform"), # L1 regularization
+            "reg_lambda": Real(1,4, prior="log-uniform"), # L2 regularization
+            "n_estimators": Integer(10, 500), # don't want too many to be able to compute...
+
+            # for binary
+            "objective": Categorical(["binary:logistic"]),
+            # for multiclass: (do not use it yet, benchmark datasets are all binary)
+            # "objective": Categorical(["multi:softmax"]),
+            # "num_class": Categorical([n_classes]),
+        }
         if context is not None:
             self.__xct = context["classification_tree"]
             dh_ctx = context["data_h_setup"]
@@ -40,7 +41,7 @@ class XCT_Extended:
                 self.__models_in_leaves = context["leaf_models"]
             else:
                 self.__models_in_leaves = {}
-                X, y = data_h.train_data # USE ALL TRAINING DATA HERE
+                X, y = data_h.used_data # USE ALL TRAINING DATA HERE? currently not, to measure up to previous works
                 X_reduced = data_h.unnormalize(data_h.normalize(X)) # performs better with true data
                 for leaf_i, indices, pred in classification_tree.get_leafs_with_data(X_reduced):
                     if leaf_i in self.__params_in_leaves:
@@ -53,7 +54,7 @@ class XCT_Extended:
         self.__xct = classification_tree
         self.__data_h = data_handler
 
-        X, y = data_handler.train_data # USE ALL TRAINING DATA HERE
+        X, y = data_handler.used_data # USE ALL TRAINING DATA HERE? currently not, to measure up to previous works
         X_reduced = data_handler.unnormalize(data_handler.normalize(X)) # performs better with true data
         self.__models_in_leaves = {}
         self.__params_in_leaves = {}
@@ -68,12 +69,13 @@ class XCT_Extended:
                     continue
                 if np.all(counts >= cv_folds):
                     clf = XGBClassifier(random_state=seed)
-                    search = RandomizedSearchCV(clf, self.param_distributions, cv=cv_folds, n_iter=search_iterations, random_state=seed)
-                    search = search.fit(X[indices], y[indices])
-                    best_params = search.best_params_
+                    bayes_search = BayesSearchCV(clf, self.param_distributions, n_iter=search_iterations, # specify how many iterations
+                                                    scoring="accuracy", n_jobs=8, cv=cv_folds, random_state=seed)
+                    bayes_search.fit(X[indices], y[indices])
+                    best_params = bayes_search.best_params_
                 else:
-                    # if you cannot do cross validation, optimize with some simple paramteters
-                    best_params = {"booster": "dart", "max_depth": 5, "n_estimators": 1, "objective": "binary:logistic"}
+                    # if you cannot do reasonable cross validation, optimize with some simple paramteters
+                    best_params = {"max_depth": 5, "n_estimators": 1, "objective": "binary:logistic"}
 
                 xgboost = XGBClassifier(random_state=seed, **best_params)
                 xgboost.fit(X[indices], y[indices])
