@@ -39,3 +39,6 @@ To investigate how were the results collected, see the function `retrieve_inform
 To run the optimization of CART methods, run the following: `python find_best_trees.py` This generates a file per configuration, containing the same information as used in the `Results.ipynb`
 
 Note that the script takes a lot of time to finish, and can take a lot of memory as well.
+
+## Master's Thesis
+This repository is a major part of Jiří Němeček's Master's Thesis at FEE CTU in Prague
