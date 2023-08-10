@@ -24,7 +24,7 @@ PARAMETERS = {
         "round_lim": 40,
         "size_lim": 10000,
     },
-    "simple_shallow": {
+    "simple": {
         "search_space": {
             "max_depth": Integer(2, 4),
             "min_samples_leaf": Integer(1, 60),
