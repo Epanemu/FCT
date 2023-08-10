@@ -13,23 +13,23 @@ from skopt.space import Real, Categorical, Integer
 
 
 PARAMETERS = {
-    "base": {
+    "fixed": {
         "search_space": {
-            "max_depth": Integer(2, 4),
-            "min_samples_leaf": Integer(1, 60),
-            "min_samples_split": Integer(2, 60),
-            "max_leaf_nodes": Integer(8, 16),
+            "max_depth": Categorical([4]),
+            "min_samples_leaf": Categorical([50]),
+            "min_samples_split": Integer(2, 100),
+            "max_leaf_nodes": Integer(2, 16),
             "min_impurity_decrease": Real(0, 0.2),
         },
         "round_lim": 40,
         "size_lim": 10000,
     },
-    "d3": {
+    "simple_shallow": {
         "search_space": {
-            "max_depth": Integer(1, 3),
+            "max_depth": Integer(2, 4),
             "min_samples_leaf": Integer(1, 60),
             "min_samples_split": Integer(2, 60),
-            "max_leaf_nodes": Integer(2, 8),
+            "max_leaf_nodes": Integer(8, 16),
             "min_impurity_decrease": Real(0, 0.2),
         },
         "round_lim": 40,
