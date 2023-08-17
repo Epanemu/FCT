@@ -24,6 +24,18 @@ PARAMETERS = {
         "round_lim": 40,
         "size_lim": 10000,
     },
+    "pruned": {
+        "search_space": {
+            "max_depth": Categorical([4]),
+            "min_samples_leaf": Categorical([50]),
+            "min_samples_split": Integer(2, 100),
+            "max_leaf_nodes": Integer(2, 16),
+            "min_impurity_decrease": Real(0, 0.2),
+            "ccp_alpha": Real(0, 0.3),
+        },
+        "round_lim": 40,
+        "size_lim": 10000,
+    },
     "simple": {
         "search_space": {
             "max_depth": Integer(2, 4),
