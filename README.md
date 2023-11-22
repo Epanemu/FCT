@@ -40,5 +40,12 @@ To run the optimization of CART methods, run the following: `python find_best_tr
 
 Note that the script takes a lot of time to finish, and can take a lot of memory as well.
 
+## Reference
+
+Improving the Validity of Decision Trees as Explanations \
+*__Jiří Němeček__, Tomáš Pevný, Jakub Mareček* \
+[link to the preprint](https://arxiv.org/abs/2306.06777)
+
+
 ## Master's Thesis
-This repository is a major part of Jiří Němeček's Master's Thesis at FEE CTU in Prague
+This repository is a major part of Jiří Němeček's [Master's Thesis](https://dspace.cvut.cz/handle/10467/109455?locale-attribute=en) at FEE CTU in Prague
